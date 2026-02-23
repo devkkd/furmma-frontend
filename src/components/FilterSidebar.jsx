@@ -107,6 +107,7 @@ export default function FilterSidebar({ filters, onChange }) {
      TOGGLE HANDLER
   ========================= */
   const handleToggle = (groupId, option) => {
+    let nextState;
     setSelectedFilters((prev) => {
       const updatedGroup = prev[groupId].includes(option)
         ? prev[groupId].filter((i) => i !== option)
@@ -119,18 +120,19 @@ export default function FilterSidebar({ filters, onChange }) {
         if (!updatedGroup.includes("Cat")) newState.catBreed = [];
       }
 
-      const payload = {};
-
-      Object.entries(newState).forEach(([key, value]) => {
-        if (!value.length) payload[key] = null;
-        else if (key === "rating")
-          payload[key] = value.map((v) => v.charAt(0)).join(",");
-        else payload[key] = value.map((v) => v.toLowerCase()).join(",");
-      });
-
-      onChange(payload);
+      nextState = newState;
       return newState;
     });
+
+    // Build payload from nextState and call onChange after state update (not inside setState updater)
+    const payload = {};
+    Object.entries(nextState || {}).forEach(([key, value]) => {
+      if (!value.length) payload[key] = null;
+      else if (key === "rating")
+        payload[key] = value.map((v) => v.charAt(0)).join(",");
+      else payload[key] = value.map((v) => v.toLowerCase()).join(",");
+    });
+    onChange(payload);
   };
 
   /* =========================

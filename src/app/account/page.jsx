@@ -1,7 +1,10 @@
 "use client"
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Container from '@/components/Container';
 import { HiOutlineLogout, HiOutlineTrash, HiOutlineUserCircle } from 'react-icons/hi';
+import { useAuthStore } from '@/store/authStore';
+import { getToken, setToken, fetchMe, updateProfile } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
 /* --- Modal Components --- */
 
@@ -78,14 +81,64 @@ const DeleteModal = ({ isOpen, onClose, onConfirm }) => {
 /* --- Main Page Component --- */
 
 const AccountSettings = () => {
-    // State to handle modal visibility
+    const router = useRouter();
+    const user = useAuthStore((s) => s.user);
+    const logout = useAuthStore((s) => s.logout);
+    const setUser = useAuthStore((s) => s.setUser);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [saveMessage, setSaveMessage] = useState(null);
 
-    // Placeholder handlers
+    useEffect(() => {
+        if (user) {
+            setName(user.name ?? '');
+            setEmail(user.email ?? '');
+            setPhone(user.phone ?? '');
+        }
+    }, [user]);
+
     const handleLogout = () => {
-        console.log("User logged out");
+        setToken(null);
+        logout();
         setShowLogoutModal(false);
+        router.replace('/login');
+    };
+
+    const handleSaveChanges = async () => {
+        if (!name.trim()) {
+            setSaveMessage({ type: 'error', text: 'Name is required' });
+            return;
+        }
+        if (!email.trim()) {
+            setSaveMessage({ type: 'error', text: 'Email is required' });
+            return;
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            setSaveMessage({ type: 'error', text: 'Please enter a valid email address' });
+            return;
+        }
+        setSaving(true);
+        setSaveMessage(null);
+        try {
+            const updated = await updateProfile({
+                name: name.trim(),
+                email: email.trim(),
+                phone: phone.replace(/\D/g, '').slice(-10) || undefined,
+            });
+            if (updated) {
+                setUser(updated);
+                setSaveMessage({ type: 'success', text: 'Profile updated successfully' });
+            }
+        } catch (e) {
+            setSaveMessage({ type: 'error', text: e.message || 'Failed to update profile' });
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleDelete = () => {
@@ -123,6 +176,8 @@ const AccountSettings = () => {
                                     <input 
                                         type="text" 
                                         placeholder="Enter Your Name"
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
                                         className="w-full px-5 py-3.5 border border-gray-200 rounded-xl bg-gray-50/30 focus:outline-none focus:ring-1 focus:ring-gray-300 text-[15px]"
                                     />
                                 </div>
@@ -133,21 +188,27 @@ const AccountSettings = () => {
                                     <input 
                                         type="email" 
                                         placeholder="Enter Your Email Address"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
                                         className="w-full px-5 py-3.5 border border-gray-200 rounded-xl bg-gray-50/30 focus:outline-none focus:ring-1 focus:ring-gray-300 text-[15px]"
                                     />
                                 </div>
 
-                                {/* Mobile Number with Change CTA */}
+                                {/* Mobile Number with Change CTA (app jaisa) */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold text-gray-700 ml-1">Mobile Number</label>
-                                    <div className="relative">
+                                    <div className="relative flex gap-2">
                                         <input 
-                                            type="text" 
-                                            defaultValue="1234567890"
-                                            disabled
-                                            className="w-full px-5 py-3.5 border border-gray-200 rounded-xl bg-gray-50/50 text-gray-400 text-[15px]"
+                                            type="tel" 
+                                            placeholder="99999 99999"
+                                            value={phone}
+                                            onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                                            className="flex-1 px-5 py-3.5 border border-gray-200 rounded-xl bg-gray-50/50 focus:outline-none focus:ring-1 focus:ring-gray-300 text-[15px]"
                                         />
-                                        <button className="absolute right-2 top-1/2 -translate-y-1/2 bg-black text-white text-[11px] font-bold px-4 py-2 rounded-lg hover:bg-gray-800 transition">
+                                        <button 
+                                            type="button"
+                                            className="shrink-0 bg-[#1a2b48] text-white text-[11px] font-bold px-4 py-3.5 rounded-xl hover:bg-[#111e33] transition"
+                                        >
                                             Change Number
                                         </button>
                                     </div>
@@ -159,11 +220,28 @@ const AccountSettings = () => {
                                         <span className="text-sm font-bold text-gray-700">Account Registration Type</span>
                                         <div className="text-right">
                                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mobile Number</p>
-                                            <p className="text-sm font-bold text-gray-500">1234567890</p>
+                                            <p className="text-sm font-bold text-gray-500">{phone || user?.phone || '—'}</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Save Changes - app jaisa */}
+                        <div className="px-6 md:px-12 pt-6 pb-2">
+                            {saveMessage && (
+                                <p className={`text-sm mb-3 ${saveMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                                    {saveMessage.text}
+                                </p>
+                            )}
+                            <button 
+                                type="button"
+                                onClick={handleSaveChanges}
+                                disabled={saving}
+                                className="w-full max-w-[280px] bg-[#1a2b48] text-white font-bold py-3.5 rounded-full hover:bg-[#111e33] disabled:opacity-70 transition"
+                            >
+                                {saving ? 'Saving...' : 'Save Changes'}
+                            </button>
                         </div>
                     </div>
 

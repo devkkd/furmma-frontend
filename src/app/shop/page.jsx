@@ -1,49 +1,127 @@
 "use client";
 
+import { useEffect, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import ToggleDogCat from "@/components/ToggleDogCat";
 import FilterSidebar from "@/components/FilterSidebar";
 import ProductCard from "@/components/ProductCard";
-
 import { usePetStore } from "@/store/petStore";
-import { products } from "@/data/products";
+import { useProducts } from "@/hooks/useProducts";
 
 export default function StorePage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const petType = usePetStore((state) => state.petType);
+  const setPetType = usePetStore((state) => state.setPet);
   const filters = usePetStore((state) => state.filters);
+  const setFilter = usePetStore((state) => state.setFilter);
 
-  // FILTER LOGIC (simple now, expandable later)
-  const filteredProducts = products
-    .filter((p) => p.petType === petType)
-    .filter((p) => {
-      if (filters.category && p.category !== filters.category) return false;
-      if (filters.rating && p.rating < filters.rating) return false;
-      return true;
-    });
+  // Only URL = source of truth on shop
+  const categoryFromUrl = searchParams.get("category") || null;
+  const petFromUrl = searchParams.get("petType") || null;
+  const ratingFromUrl = searchParams.get("rating") || searchParams.get("minRating") || null;
+  const ageFromUrl = searchParams.get("age") || null;
+
+  // Shop default: Dog selected (active button + dog products) when no petType in URL
+  const effectivePetType = petFromUrl || "dog";
+
+  // Sync to store so Header/other links carry current pet type
+  useEffect(() => {
+    const cat = searchParams.get("category");
+    if (cat) setFilter("category", cat);
+    if (ratingFromUrl) setFilter("rating", ratingFromUrl);
+    if (ageFromUrl) setFilter("age", ageFromUrl);
+    setPetType(effectivePetType);
+  }, [searchParams, effectivePetType, ratingFromUrl, ageFromUrl, setFilter, setPetType]);
+
+  // Filters object for FilterSidebar (from URL + store)
+  const sidebarFilters = {
+    petType: effectivePetType,
+    category: categoryFromUrl || filters?.category || null,
+    age: ageFromUrl || filters?.age || null,
+    dogBreed: filters?.dogBreed || null,
+    catBreed: filters?.catBreed || null,
+    size: filters?.size || null,
+    dietary: filters?.dietary || null,
+    rating: ratingFromUrl || filters?.rating || null,
+  };
+
+  // When user changes filter in sidebar: update store + URL (all filters persist)
+  const handleFilterChange = useCallback(
+    (payload) => {
+      if (payload.petType) setPetType(payload.petType === "dog" ? "dog" : payload.petType === "cat" ? "cat" : effectivePetType);
+      if (payload.category !== undefined) setFilter("category", payload.category || null);
+      if (payload.rating !== undefined) setFilter("rating", payload.rating || null);
+      if (payload.age !== undefined) setFilter("age", payload.age || null);
+      if (payload.size !== undefined) setFilter("size", payload.size || null);
+      if (payload.dietary !== undefined) setFilter("dietary", payload.dietary || null);
+      if (payload.dogBreed !== undefined) setFilter("dogBreed", payload.dogBreed || null);
+      if (payload.catBreed !== undefined) setFilter("catBreed", payload.catBreed || null);
+
+      const params = new URLSearchParams();
+      const pet = (payload.hasOwnProperty("petType") ? payload.petType : effectivePetType) || null;
+      const cat = (payload.hasOwnProperty("category") ? payload.category : categoryFromUrl) || null;
+      const rating = (payload.hasOwnProperty("rating") ? payload.rating : ratingFromUrl) || null;
+      const age = (payload.hasOwnProperty("age") ? payload.age : ageFromUrl) || null;
+      if (pet) params.set("petType", pet);
+      if (cat) params.set("category", cat);
+      if (rating) params.set("rating", rating);
+      if (age) params.set("age", age);
+      router.push(`/shop${params.toString() ? `?${params.toString()}` : ""}`);
+    },
+    [setPetType, setFilter, effectivePetType, categoryFromUrl, ratingFromUrl, ageFromUrl, router]
+  );
+
+  const effectiveRating = ratingFromUrl || filters?.rating || undefined;
+  const effectiveCategory = categoryFromUrl || filters?.category || undefined;
+  const effectiveAge = ageFromUrl || filters?.age || undefined;
+  const minRatingNum = effectiveRating ? parseInt(String(effectiveRating).split(",")[0], 10) : undefined;
+
+  const { products: apiProducts, loading } = useProducts({
+    petType: effectivePetType,
+    category: effectiveCategory,
+    age: effectiveAge,
+    minRating: minRatingNum || undefined,
+  });
+
+  const filteredProducts = apiProducts.filter((p) => {
+    if (effectiveCategory && p.category !== effectiveCategory) return false;
+    if (minRatingNum != null && (p.rating || 0) < minRatingNum) return false;
+    return true;
+  });
 
   return (
     <div className="bg-white w-full">
       <div className="max-w-7xl mx-auto px-4 py-8 font-sans">
-        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900">Shop</h1>
         </div>
-
-        <ToggleDogCat />
-
+        <ToggleDogCat
+          onShopPage
+          currentPetType={effectivePetType}
+          onPetTypeChange={(type) => {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("petType", type);
+            if (categoryFromUrl) params.set("category", categoryFromUrl);
+            router.push(`/shop${params.toString() ? `?${params.toString()}` : ""}`);
+          }}
+        />
         <div className="flex gap-8 mt-6">
-          {/* Sidebar */}
           <div className="hidden md:block w-64 shrink-0">
-            <FilterSidebar />
+            <FilterSidebar filters={sidebarFilters} onChange={handleFilterChange} />
           </div>
-
-          {/* Products */}
           <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-10">
-            {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-            
-            {filteredProducts.length === 0 && (
-<p className="text-gray-900">No products found</p>
+            {loading ? (
+              <p className="text-gray-500 col-span-full">Loading...</p>
+            ) : (
+              <>
+                {filteredProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+                {filteredProducts.length === 0 && (
+                  <p className="text-gray-900 col-span-full">No products found</p>
+                )}
+              </>
             )}
           </div>
         </div>

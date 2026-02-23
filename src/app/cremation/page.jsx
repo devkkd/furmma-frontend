@@ -1,13 +1,54 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import Container from '@/components/Container';
 import { HiOutlineLocationMarker, HiOutlineSearch, HiPhone } from 'react-icons/hi';
 import { RiDirectionLine } from 'react-icons/ri';
 import { LuArrowUpDown } from 'react-icons/lu';
 import Link from 'next/link';
-import cremationCenters from "@/data/cremationCenter";
+import cremationCentersStatic from "@/data/cremationCenter";
+import { fetchCremationCenters } from '@/lib/api';
+import { useGeolocation } from '@/hooks/useGeolocation';
 
 const CremationServices = () => {
-    const services = cremationCenters;
+    const [services, setServices] = useState(cremationCentersStatic);
+    const [showLocationModal, setShowLocationModal] = useState(false);
+    const [manualLocation, setManualLocation] = useState('');
+    const { location, loading: locLoading, error: locError, fetchCurrentLocation, setLocation } = useGeolocation('Pratap Nagar, Jaipur');
+
+    useEffect(() => {
+        fetchCurrentLocation();
+    }, [fetchCurrentLocation]);
+
+    const handleUseMyLocation = async () => {
+        const addr = await fetchCurrentLocation();
+        if (addr) setShowLocationModal(false);
+    };
+    const handleUseManualLocation = () => {
+        const val = manualLocation.trim();
+        if (val) {
+            setLocation(val);
+            setShowLocationModal(false);
+            setManualLocation('');
+        }
+    };
+
+    useEffect(() => {
+        fetchCremationCenters()
+            .then((centers) => {
+                setServices((centers || []).map((c) => ({
+                    _id: c._id,
+                    name: c.name,
+                    address: c.address,
+                    city: c.city,
+                    state: c.state,
+                    phone: c.phone,
+                    image: c.image || '/images/Events/events.png',
+                    distance: c.distance || `${c.city}, ${c.state}`,
+                })));
+            })
+            .catch(() => setServices(cremationCentersStatic));
+    }, []);
 
     return (
         <section className="bg-white py-6 px-4 md:px-0 md:py-10 min-h-screen">
@@ -43,15 +84,60 @@ const CremationServices = () => {
                                 <div className="flex items-center gap-1">
                                     <HiOutlineLocationMarker className="text-gray-400 text-lg shrink-0" />
                                     <span className="text-xs text-gray-600 font-bold truncate max-w-[100px] sm:max-w-[120px]">
-                                        Pratap Nagar, Jaipur
+                                        {locLoading ? 'Getting location...' : (location || 'Select location')}
                                     </span>
                                 </div>
-                                <button className="bg-[#a3e635] text-white text-[10px] font-extrabold px-3 py-1 rounded-lg uppercase hover:opacity-90 transition shadow-sm shrink-0">
+                                <button
+                                    onClick={() => setShowLocationModal(true)}
+                                    disabled={locLoading}
+                                    className="bg-[#a3e635] text-white text-[10px] font-extrabold px-3 py-1 rounded-lg uppercase hover:opacity-90 transition shadow-sm shrink-0 disabled:opacity-60"
+                                >
                                     Change
                                 </button>
                             </div>
                         </div>
                     </div>
+                    {showLocationModal && (
+                        <>
+                            <div className="fixed inset-0 bg-black/40 z-30" onClick={() => setShowLocationModal(false)} />
+                            <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40 w-full max-w-sm bg-white rounded-2xl shadow-xl p-5">
+                                <h3 className="text-lg font-bold text-gray-900 mb-3">Set your location</h3>
+                                {locError && (
+                                    <p className="text-xs text-amber-700 bg-amber-50 rounded-lg p-2 mb-3">{locError}</p>
+                                )}
+                                <button
+                                    onClick={handleUseMyLocation}
+                                    disabled={locLoading}
+                                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-[#a3e635] text-black font-semibold rounded-xl mb-3 disabled:opacity-60"
+                                >
+                                    {locLoading ? 'Getting...' : 'Use my current location'}
+                                </button>
+                                <p className="text-xs text-gray-500 mb-2">Or enter manually</p>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Jaipur, Rajasthan"
+                                    value={manualLocation}
+                                    onChange={(e) => setManualLocation(e.target.value)}
+                                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm mb-3"
+                                />
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={handleUseManualLocation}
+                                        disabled={!manualLocation.trim()}
+                                        className="flex-1 py-2.5 bg-gray-900 text-white font-semibold rounded-xl disabled:opacity-50"
+                                    >
+                                        Use this location
+                                    </button>
+                                    <button
+                                        onClick={() => setShowLocationModal(false)}
+                                        className="px-4 py-2.5 border border-gray-200 rounded-xl font-medium"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Services Grid: 1 column on mobile, 2 columns on tablets/desktops */}

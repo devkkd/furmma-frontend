@@ -1,16 +1,23 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 
 import { usePetStore } from "@/store/petStore";
 import { dogEverydayData, catEverydayData } from "@/data/everyday";
 
+function titleToCategory(title) {
+  const slug = (title || "").toLowerCase().trim();
+  if (slug === "medicine") return "health";
+  return slug;
+}
+
 export default function Everyday() {
   const petType = usePetStore((state) => state.petType);
 
-  const data = petType === "dog" ? dogEverydayData : catEverydayData;
+  const data = petType === "cat" ? catEverydayData : dogEverydayData;
 
   return (
     <section className="w-full py-5">
@@ -31,7 +38,10 @@ export default function Everyday() {
         >
           {data.map((item, index) => (
             <SwiperSlide key={index}>
-              <div className="flex flex-col items-center">
+              <Link
+                href={`/shop?category=${titleToCategory(item.title)}${petType ? `&petType=${petType}` : ""}`}
+                className="flex flex-col items-center block"
+              >
                 <div className="bg-blue-50 rounded-xl p-4 flex items-center justify-center cursor-pointer hover:shadow-md transition">
                   <img
                     src={item.img}
@@ -42,7 +52,7 @@ export default function Everyday() {
                 <p className="text-sm font-medium text-center pt-2">
                   {item.title}
                 </p>
-              </div>
+              </Link>
             </SwiperSlide>
           ))}
         </Swiper>

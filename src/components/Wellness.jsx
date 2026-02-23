@@ -1,20 +1,21 @@
 "use client";
 import React from "react";
+import Link from "next/link";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import { catWellnessData, dogWellnessData } from "@/data/wellness";
 import { usePetStore } from "@/store/petStore";
 
-/* ---------- DATA ---------- */
-
-
-
-/* ---------- COMPONENT ---------- */
+function titleToCategory(title) {
+  const slug = (title || "").toLowerCase().trim();
+  if (slug === "medicine") return "health";
+  return slug;
+}
 
 export default function Wellness({ pet }) {
   const petType = usePetStore((state) => state.petType);
 
-  const data = petType === "dog" ? dogWellnessData : catWellnessData;
+  const data = petType === "cat" ? catWellnessData : dogWellnessData;
   return (
     <section className="w-full py-5">
       <h2 className="text-2xl font-bold text-center mb-8">
@@ -34,7 +35,10 @@ export default function Wellness({ pet }) {
         >
           {data.map((item, index) => (
             <SwiperSlide key={index}>
-              <div className="flex flex-col items-center">
+              <Link
+                href={`/shop?category=${titleToCategory(item.title)}${petType ? `&petType=${petType}` : ""}`}
+                className="flex flex-col items-center block"
+              >
                 <div className="bg-[#FCEBFF] rounded-xl p-4 flex items-center justify-center cursor-pointer hover:shadow-md transition">
                   <img
                     src={item.img}
@@ -45,7 +49,7 @@ export default function Wellness({ pet }) {
                 <p className="text-sm font-medium text-center pt-2">
                   {item.title}
                 </p>
-              </div>
+              </Link>
             </SwiperSlide>
           ))}
         </Swiper>

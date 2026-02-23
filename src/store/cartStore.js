@@ -20,9 +20,20 @@ export const useCartStore = create(
           })
         } else {
           set({
-            items: [...items, { productId: product.id, qty: 1 }],
+            items: [...items, { productId: product.id, qty: 1, product: { id: product.id, name: product.name, image: product.image || product.images?.[0], price: product.price } }],
           })
         }
+      },
+      removeItem: (productId) => {
+        set({ items: get().items.filter(i => i.productId !== productId) })
+      },
+      updateQty: (productId, qty) => {
+        if (qty < 1) return
+        set({
+          items: get().items.map(i =>
+            i.productId === productId ? { ...i, qty } : i
+          ),
+        })
       },
     }),
     { name: 'guest-cart' }

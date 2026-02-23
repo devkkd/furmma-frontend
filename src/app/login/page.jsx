@@ -6,9 +6,7 @@ import { FaApple } from 'react-icons/fa'
 import Container from '@/components/Container'
 import { useAuthStore } from '@/store/authStore'
 import { useRouter } from 'next/navigation'
-
-
-const DUMMY_OTP = '4321'
+import { sendOtp as sendOtpApi, verifyOtp as verifyOtpApi, setToken } from '@/lib/api'
 
 const AuthPage = () => {
     const login = useAuthStore((state) => state.login)
@@ -17,30 +15,49 @@ const AuthPage = () => {
     const [phone, setPhone] = useState('')
     const [otp, setOtp] = useState('')
     const [error, setError] = useState('')
+    const [loading, setLoading] = useState(false)
     const router = useRouter()
 
-
-    const sendOtp = () => {
-        if (phone.length !== 10) {
+    const sendOtp = async () => {
+        const digits = phone.replace(/\D/g, '')
+        if (digits.length !== 10) {
             setError('Enter a valid 10 digit mobile number')
             return
         }
         setError('')
-        console.log('OTP sent:', DUMMY_OTP)
-        setStep('OTP')
+        setLoading(true)
+        try {
+            await sendOtpApi(digits)
+            setStep('OTP')
+        } catch (e) {
+            setError(e.message || 'Failed to send OTP')
+        } finally {
+            setLoading(false)
+        }
     }
-    const verifyOtp = () => {
-        if (otp !== DUMMY_OTP) {
-            setError('Invalid OTP')
+
+    const verifyOtp = async () => {
+        if (otp.length < 6) {
+            setError('Enter 6-digit OTP')
             return
         }
-
-        login({
-            phone,
-            name: 'Furrmaa User',
-        })
-
-        router.replace('/account') // or router.push('/account')
+        setError('')
+        setLoading(true)
+        try {
+            const digits = phone.replace(/\D/g, '').slice(-10)
+            const { token, user } = await verifyOtpApi(digits, otp.trim(), 'Furrmaa User')
+            if (token) setToken(token)
+            login({
+                ...user,
+                phone: user?.phone || digits,
+                name: user?.name || 'Furrmaa User',
+            })
+            router.replace('/account')
+        } catch (e) {
+            setError(e.message || 'Invalid OTP')
+        } finally {
+            setLoading(false)
+        }
     }
 
 
@@ -85,9 +102,10 @@ const AuthPage = () => {
 
                                 <button
                                     onClick={sendOtp}
-                                    className="w-full bg-[#1F2E46] text-white font-bold py-3.5 rounded-full mt-2"
+                                    disabled={loading}
+                                    className="w-full bg-[#1F2E46] text-white font-bold py-3.5 rounded-full mt-2 disabled:opacity-70"
                                 >
-                                    Send OTP →
+                                    {loading ? 'Sending...' : 'Send OTP →'}
                                 </button>
                             </>
                         )}
@@ -106,9 +124,10 @@ const AuthPage = () => {
 
                                 <button
                                     onClick={verifyOtp}
-                                    className="w-full bg-[#1F2E46] text-white font-bold py-3.5 rounded-full mt-2"
+                                    disabled={loading}
+                                    className="w-full bg-[#1F2E46] text-white font-bold py-3.5 rounded-full mt-2 disabled:opacity-70"
                                 >
-                                    Verify & Login →
+                                    {loading ? 'Verifying...' : 'Verify & Login →'}
                                 </button>
                             </>
                         )}

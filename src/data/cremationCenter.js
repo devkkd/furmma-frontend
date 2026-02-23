@@ -7,6 +7,8 @@ const cremationCenters = [
     state: "Delhi",
     phone: "011-23860011",
     isActive: true,
+    image: "/images/Events/events.png",
+    distance: "Delhi, Delhi",
   },
   {
     _id: "2",
@@ -16,6 +18,8 @@ const cremationCenters = [
     state: "Maharashtra",
     phone: "022-27701122",
     isActive: true,
+    image: "/images/Events/events.png",
+    distance: "Navi Mumbai, Maharashtra",
   },
   {
     _id: "3",
@@ -25,6 +29,8 @@ const cremationCenters = [
     state: "Karnataka",
     phone: "080-22211444",
     isActive: true,
+    image: "/images/Events/events.png",
+    distance: "Bengaluru, Karnataka",
   },
   {
     _id: "4",
@@ -34,6 +40,8 @@ const cremationCenters = [
     state: "Telangana",
     phone: "040-27531234",
     isActive: true,
+    image: "/images/Events/events.png",
+    distance: "Hyderabad, Telangana",
   },
   {
     _id: "5",
@@ -43,6 +51,8 @@ const cremationCenters = [
     state: "Uttar Pradesh",
     phone: "0542-2456789",
     isActive: true,
+    image: "/images/Events/events.png",
+    distance: "Varanasi, Uttar Pradesh",
   },
   {
     _id: "6",
@@ -52,6 +62,8 @@ const cremationCenters = [
     state: "West Bengal",
     phone: "033-24641234",
     isActive: false,
+    image: "/images/Events/events.png",
+    distance: "Kolkata, West Bengal",
   },
 ];
 

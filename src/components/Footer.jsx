@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import {
   FaPhoneAlt,
   FaArrowUp,
@@ -71,8 +72,19 @@ export default function Footer() {
           <FooterCol title="Quick Links" items={["All For You", "Food", "Medicine", "Toys", "Accessories", "Grooming", "Supplements"]} />
           <FooterCol title="Train" items={["Basic Training (7 Lessons)", "Intermediate Training (7 Lessons)", "Advanced Training (7 Lessons)"]} />
           <FooterCol title="Vet Services" items={["Veterinarians", "Pet Shops", "Hospitals", "Pet Hotels / Hostels", "NGOs", "Shelters", "Rescue Centers", "Pet Cremation"]} />
-          <FooterCol title="Hope" items={["Lost & Found", "Adoption", "Add Post", "Hope Chat's"]} />
-          <FooterCol title="More" items={["Furrmaa Pet AI Chat", "Pet Events", "Pet Cremation", "About Us", "FAQ's", "Contact Us"]} />
+          <FooterCol title="Hope" items={[
+            { label: "Lost & Found", href: "/hope?filter=lostFound" },
+            { label: "Adoption", href: "/hope?filter=adoption" },
+            { label: "Browse Posts", href: "/hope" },
+          ]} />
+          <FooterCol title="More" items={[
+            "Furrmaa Pet AI Chat",
+            { label: "Pet Events", href: "/events" },
+            { label: "Pet Cremation", href: "/cremation" },
+            { label: "About Us", href: "/about" },
+            { label: "FAQ's", href: "/faqs" },
+            { label: "Contact Us", href: "/contactus" },
+          ]} />
           <FooterCol title="Account" items={["Login/Register", "Cart", "My Orders", "Track Orders"]} />
         </div>
 
@@ -158,11 +170,20 @@ function FooterCol({ title, items }) {
     <div className="space-y-6">
       <h4 className="font-bold text-[#0E0E0E] text-[13px] uppercase tracking-wide">{title}</h4>
       <ul className="space-y-4 text-gray-600 text-[13px] font-medium">
-        {items.map((item, i) => (
-          <li key={i} className="hover:text-black cursor-pointer transition-colors leading-tight">
-            {item}
-          </li>
-        ))}
+        {items.map((item, i) => {
+          const isLink = typeof item === 'object' && item.href;
+          return (
+            <li key={i} className="leading-tight">
+              {isLink ? (
+                <Link href={item.href} className="hover:text-black transition-colors">
+                  {item.label}
+                </Link>
+              ) : (
+                <span className="hover:text-black cursor-pointer transition-colors">{item}</span>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

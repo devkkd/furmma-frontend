@@ -22,11 +22,15 @@ import {
 } from "react-icons/fa";
 import { BsStars } from "react-icons/bs";
 import { useAuthStore } from '@/store/authStore'
-
+import { useCartStore } from '@/store/cartStore'
+import { usePetStore } from '@/store/petStore'
 
 export default function Header() {
   const [open, setOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuthStore()
+  const cartCount = useCartStore((s) => s.items.reduce((n, i) => n + i.qty, 0))
+  const petType = usePetStore((s) => s.petType)
+  const shopCat = (cat) => `/shop?category=${cat}${petType ? `&petType=${petType}` : ""}`
 
 
 
@@ -92,7 +96,7 @@ export default function Header() {
                 className="flex items-center gap-2 border border-gray-300 rounded-xl px-4 py-2 text-sm"
               >
                 <FaShoppingCart />
-                Cart (0)
+                Cart ({cartCount})
               </Link>
 
               <button className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-sm">
@@ -118,7 +122,7 @@ export default function Header() {
               <Link href="/cart" className="relative text-xl">
                 <FaShoppingCart />
                 <span className="absolute -top-2 -right-2 bg-black text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full">
-                  0
+                  {cartCount}
                 </span>
               </Link>
 
@@ -149,12 +153,12 @@ export default function Header() {
       >
         <div className="px-6 py-6 space-y-6">
           <Link href="/shop" className="flex items-center gap-4"><FaStore /> Shop</Link>
-          <Link href="/shop?category=food" className="flex items-center gap-4"><FaBone /> Food</Link>
-          <Link href="/shop?category=medicine" className="flex items-center gap-4"><FaCapsules /> Medicine</Link>
-          <Link href="/shop?category=toys" className="flex items-center gap-4"><FaPuzzlePiece /> Toys</Link>
-          <Link href="/shop?category=accessories" className="flex items-center gap-4"><FaPaw /> Accessories</Link>
-          <Link href="/shop?category=grooming" className="flex items-center gap-4"><FaCut /> Grooming</Link>
-          <Link href="/shop?category=supplements" className="flex items-center gap-4"><FaFirstAid /> Supplements</Link>
+          <Link href={shopCat("food")} className="flex items-center gap-4"><FaBone /> Food</Link>
+          <Link href={shopCat("medicine")} className="flex items-center gap-4"><FaCapsules /> Medicine</Link>
+          <Link href={shopCat("toys")} className="flex items-center gap-4"><FaPuzzlePiece /> Toys</Link>
+          <Link href={shopCat("accessories")} className="flex items-center gap-4"><FaPaw /> Accessories</Link>
+          <Link href={shopCat("grooming")} className="flex items-center gap-4"><FaCut /> Grooming</Link>
+          <Link href={shopCat("supplements")} className="flex items-center gap-4"><FaFirstAid /> Supplements</Link>
           <Link href="/training" className="flex items-center gap-4"><FaDog /> Pet Training</Link>
           <Link href="/vet" className="flex items-center gap-4"><FaStethoscope /> Vet Services</Link>
           <Link href="/hope" className="flex items-center gap-4"><FaHeart /> Hope</Link>
@@ -168,12 +172,12 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-4">
           <ul className="flex items-center justify-between py-3 text-sm text-gray-700">
             <li><Link href="/shop" className="flex items-center gap-2 hover:text-slate-900"><FaStore /> Shop</Link></li>
-            <li><Link href="/shop?category=food" className="flex items-center gap-2 hover:text-slate-900"><FaBone /> Food</Link></li>
-            <li><Link href="/shop?category=medicine" className="flex items-center gap-2 hover:text-slate-900"><FaCapsules /> Medicine</Link></li>
-            <li><Link href="/shop?category=toys" className="flex items-center gap-2 hover:text-slate-900"><FaPuzzlePiece /> Toys</Link></li>
-            <li><Link href="/shop?category=accessories" className="flex items-center gap-2 hover:text-slate-900"><FaPaw /> Accessories</Link></li>
-            <li><Link href="/shop?category=grooming" className="flex items-center gap-2 hover:text-slate-900"><FaCut /> Grooming</Link></li>
-            <li><Link href="/shop?category=supplements" className="flex items-center gap-2 hover:text-slate-900"><FaFirstAid /> Supplements</Link></li>
+            <li><Link href={shopCat("food")} className="flex items-center gap-2 hover:text-slate-900"><FaBone /> Food</Link></li>
+            <li><Link href={shopCat("medicine")} className="flex items-center gap-2 hover:text-slate-900"><FaCapsules /> Medicine</Link></li>
+            <li><Link href={shopCat("toys")} className="flex items-center gap-2 hover:text-slate-900"><FaPuzzlePiece /> Toys</Link></li>
+            <li><Link href={shopCat("accessories")} className="flex items-center gap-2 hover:text-slate-900"><FaPaw /> Accessories</Link></li>
+            <li><Link href={shopCat("grooming")} className="flex items-center gap-2 hover:text-slate-900"><FaCut /> Grooming</Link></li>
+            <li><Link href={shopCat("supplements")} className="flex items-center gap-2 hover:text-slate-900"><FaFirstAid /> Supplements</Link></li>
             <li><Link href="/training" className="flex items-center gap-2 hover:text-slate-900"><FaDog /> Pet Training</Link></li>
             <li><Link href="/vet" className="flex items-center gap-2 hover:text-slate-900"><FaStethoscope /> Vet Services</Link></li>
             <li><Link href="/hope" className="flex items-center gap-2 hover:text-slate-900"><FaHeart /> Hope</Link></li>

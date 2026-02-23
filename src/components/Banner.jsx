@@ -11,7 +11,7 @@ import { usePetStore } from "@/store/petStore";
 export default function Banner() {
   const petType = usePetStore((state) => state.petType);
 
-  const banners = petType === "dog" ? dogBanners : catBanners;
+  const banners = petType === "cat" ? catBanners : dogBanners;
 
   return (
     <div className="w-full flex justify-center px-4 pt-6">

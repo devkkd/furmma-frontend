@@ -18,14 +18,16 @@ export const usePetStore = create(
 
       setFilter: (key, value) =>
         set((state) => ({
+          ...state,
           filters: {
-            ...state.filters,
+            ...(state.filters || {}),
             [key]: value,
           },
         })),
 
       resetFilters: () =>
-        set({
+        set((state) => ({
+          ...state,
           filters: {
             category: null,
             age: null,
@@ -33,7 +35,7 @@ export const usePetStore = create(
             rating: null,
             sort: null,
           },
-        }),
+        })),
     }),
     { name: "pet-store" }
   )

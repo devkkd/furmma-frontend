@@ -1,4 +1,15 @@
-const VideoPlayer = ({ lesson }) => {
+import { useRef } from 'react';
+
+const VideoPlayer = ({ lesson, onMarkComplete }) => {
+  const hasAutoMarked = useRef(false);
+
+  const handlePlay = () => {
+    if (onMarkComplete && !hasAutoMarked.current) {
+      hasAutoMarked.current = true;
+      onMarkComplete();
+    }
+  };
+
   return (
     <div>
       {/* VIDEO */}
@@ -8,6 +19,7 @@ const VideoPlayer = ({ lesson }) => {
           controls
           autoPlay
           className="w-full h-auto"
+          onPlay={handlePlay}
         />
       </div>
 
