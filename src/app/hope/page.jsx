@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Container from "@/components/Container";
@@ -17,7 +17,7 @@ const CheckCircle = () => (
   </svg>
 );
 
-export default function HopePage() {
+function HopePageContent() {
   const searchParams = useSearchParams();
   const filterFromUrl = searchParams?.get("filter");
   const initialCat = filterFromUrl === "lostFound" ? "Lost & Found" : filterFromUrl === "adoption" ? "Adoption" : "All";
@@ -263,5 +263,13 @@ export default function HopePage() {
 
       <WhyChooseFurrmaa />
     </div>
+  );
+}
+
+export default function HopePage() {
+  return (
+    <Suspense fallback={<div className="py-12 text-center text-gray-500">Loading...</div>}>
+      <HopePageContent />
+    </Suspense>
   );
 }

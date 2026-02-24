@@ -298,3 +298,22 @@ export async function registerPetEvent(eventId, { name, email, phone, notes }) {
   if (!res.ok) throw new Error(data.message || 'Registration failed');
   return data;
 }
+
+/** Fetch FAQs from backend */
+export async function fetchFaqs(params = {}) {
+  const base = getBaseUrl();
+  const url = `${base}/faqs`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('FAQs fetch failed');
+  const data = await res.json();
+  return data.faqs || [];
+}
+
+/** Fetch single Hope post by ID */
+export async function fetchHopePostById(id) {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/hope/posts/${id}`);
+  if (!res.ok) throw new Error('Hope post not found');
+  const data = await res.json();
+  return data.post;
+}

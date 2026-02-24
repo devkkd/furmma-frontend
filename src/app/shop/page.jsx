@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ToggleDogCat from "@/components/ToggleDogCat";
 import FilterSidebar from "@/components/FilterSidebar";
@@ -8,7 +8,7 @@ import ProductCard from "@/components/ProductCard";
 import { usePetStore } from "@/store/petStore";
 import { useProducts } from "@/hooks/useProducts";
 
-export default function StorePage() {
+function StorePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const petType = usePetStore((state) => state.petType);
@@ -127,6 +127,14 @@ export default function StorePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function StorePage() {
+  return (
+    <Suspense fallback={<div className="py-12 text-center text-gray-500">Loading...</div>}>
+      <StorePageContent />
+    </Suspense>
   );
 }
 
