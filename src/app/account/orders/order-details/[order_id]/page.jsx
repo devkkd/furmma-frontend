@@ -1,23 +1,67 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Container from '@/components/Container';
 import { HiArrowLeft, HiDownload } from 'react-icons/hi';
 import { FaStar } from 'react-icons/fa';
 import { IoCheckmarkCircle } from 'react-icons/io5';
 import Link from 'next/link';
+import { fetchOrderById } from '@/lib/api';
 import { dummyOrders } from '@/data/dummyOrders';
 import ProductInfoCard from '@/components/ProductInfoCard';
 
 const OrderDetails = () => {
-const { order_id } = useParams();
-  console.log(order_id)
+  const { order_id } = useParams();
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const order = dummyOrders.find(o => o._id === order_id);
+  useEffect(() => {
+    if (!order_id) return;
+    let cancelled = false;
+    setLoading(true);
+    fetchOrderById(order_id)
+      .then((data) => {
+        if (!cancelled) {
+          setOrder(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          // Fallback to dummy data
+          const dummyOrder = dummyOrders.find(o => o._id === order_id);
+          setOrder(dummyOrder || null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [order_id]);
+
+  if (loading) {
+    return (
+      <section className="bg-white min-h-screen py-6 md:py-10">
+        <Container>
+          <div className="p-10 text-center text-gray-500">Loading order details...</div>
+        </Container>
+      </section>
+    );
+  }
 
   if (!order) {
-    return <div className="p-10">Order not found</div>;
+    return (
+      <section className="bg-white min-h-screen py-6 md:py-10">
+        <Container>
+          <div className="p-10 text-center">
+            <p className="text-gray-700 mb-4">Order not found.</p>
+            <Link href="/account/orders" className="text-[#1F2E46] font-medium hover:underline">
+              ← Back to Orders
+            </Link>
+          </div>
+        </Container>
+      </section>
+    );
   }
 
   return (

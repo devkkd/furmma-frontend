@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import { submitSupportRequest } from '@/lib/api';
 
 export default function SupportPage() {
   const [formData, setFormData] = useState({
@@ -7,16 +8,29 @@ export default function SupportPage() {
     message: '',
   });
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Send to backend
-    console.log('Support request:', formData);
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
+    setSubmitting(true);
+    setError('');
+    
+    try {
+      await submitSupportRequest({
+        subject: formData.subject.trim(),
+        message: formData.message.trim(),
+      });
+      setSubmitted(true);
       setFormData({ subject: '', message: '' });
-    }, 3000);
+      setTimeout(() => {
+        setSubmitted(false);
+      }, 5000);
+    } catch (err) {
+      setError(err.message || 'Failed to submit request. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -46,17 +60,28 @@ export default function SupportPage() {
               <label className="block text-sm font-medium mb-2">Message</label>
               <textarea
                 value={formData.message}
-                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, message: e.target.value });
+                  setError('');
+                }}
                 className="w-full border rounded px-3 py-2 h-32"
                 required
+                disabled={submitting}
               />
             </div>
 
+            {error && (
+              <div className="mb-4 bg-red-50 border border-red-200 rounded p-3">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
             <button
               type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              disabled={submitting}
+              className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
             >
-              Submit Request
+              {submitting ? 'Submitting...' : 'Submit Request'}
             </button>
           </form>
         )}

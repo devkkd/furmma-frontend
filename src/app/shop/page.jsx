@@ -49,24 +49,54 @@ function StorePageContent() {
   // When user changes filter in sidebar: update store + URL (all filters persist)
   const handleFilterChange = useCallback(
     (payload) => {
-      if (payload.petType) setPetType(payload.petType === "dog" ? "dog" : payload.petType === "cat" ? "cat" : effectivePetType);
-      if (payload.category !== undefined) setFilter("category", payload.category || null);
-      if (payload.rating !== undefined) setFilter("rating", payload.rating || null);
-      if (payload.age !== undefined) setFilter("age", payload.age || null);
+      // Handle petType - take first value if comma-separated
+      if (payload.petType) {
+        const petTypeValue = payload.petType.split(",")[0].toLowerCase();
+        setPetType(petTypeValue === "dog" ? "dog" : petTypeValue === "cat" ? "cat" : effectivePetType);
+      }
+      
+      // Handle category - take first value if comma-separated, convert to lowercase slug
+      if (payload.category !== undefined) {
+        const categoryValue = payload.category 
+          ? payload.category.split(",")[0].toLowerCase().trim()
+          : null;
+        setFilter("category", categoryValue);
+      }
+      
+      if (payload.rating !== undefined) {
+        const ratingValue = payload.rating ? payload.rating.split(",")[0] : null;
+        setFilter("rating", ratingValue);
+      }
+      
+      if (payload.age !== undefined) {
+        const ageValue = payload.age ? payload.age.split(",")[0].toLowerCase() : null;
+        setFilter("age", ageValue);
+      }
+      
       if (payload.size !== undefined) setFilter("size", payload.size || null);
       if (payload.dietary !== undefined) setFilter("dietary", payload.dietary || null);
       if (payload.dogBreed !== undefined) setFilter("dogBreed", payload.dogBreed || null);
       if (payload.catBreed !== undefined) setFilter("catBreed", payload.catBreed || null);
 
       const params = new URLSearchParams();
-      const pet = (payload.hasOwnProperty("petType") ? payload.petType : effectivePetType) || null;
-      const cat = (payload.hasOwnProperty("category") ? payload.category : categoryFromUrl) || null;
-      const rating = (payload.hasOwnProperty("rating") ? payload.rating : ratingFromUrl) || null;
-      const age = (payload.hasOwnProperty("age") ? payload.age : ageFromUrl) || null;
+      const pet = (payload.hasOwnProperty("petType") 
+        ? payload.petType.split(",")[0].toLowerCase() 
+        : effectivePetType) || null;
+      const cat = (payload.hasOwnProperty("category") && payload.category
+        ? payload.category.split(",")[0].toLowerCase().trim()
+        : categoryFromUrl) || null;
+      const rating = (payload.hasOwnProperty("rating") && payload.rating
+        ? payload.rating.split(",")[0]
+        : ratingFromUrl) || null;
+      const age = (payload.hasOwnProperty("age") && payload.age
+        ? payload.age.split(",")[0].toLowerCase()
+        : ageFromUrl) || null;
+      
       if (pet) params.set("petType", pet);
       if (cat) params.set("category", cat);
       if (rating) params.set("rating", rating);
       if (age) params.set("age", age);
+      
       router.push(`/shop${params.toString() ? `?${params.toString()}` : ""}`);
     },
     [setPetType, setFilter, effectivePetType, categoryFromUrl, ratingFromUrl, ageFromUrl, router]
@@ -84,9 +114,23 @@ function StorePageContent() {
     minRating: minRatingNum || undefined,
   });
 
+  // Normalize category for comparison (case-insensitive, handle slugs)
+  const normalizeCategory = (cat) => {
+    if (!cat) return null;
+    return cat.toLowerCase().trim();
+  };
+
   const filteredProducts = apiProducts.filter((p) => {
-    if (effectiveCategory && p.category !== effectiveCategory) return false;
+    // Category filter - case-insensitive matching
+    if (effectiveCategory) {
+      const productCategory = normalizeCategory(p.category);
+      const filterCategory = normalizeCategory(effectiveCategory);
+      if (productCategory !== filterCategory) return false;
+    }
+    
+    // Rating filter
     if (minRatingNum != null && (p.rating || 0) < minRatingNum) return false;
+    
     return true;
   });
 

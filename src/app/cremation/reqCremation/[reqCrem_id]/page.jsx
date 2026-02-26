@@ -1,21 +1,26 @@
 "use client"
 import React, { useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Container from '@/components/Container'
+import { submitCremationRequest } from '@/lib/api'
 
 const RequestForCremation = () => {
     const { id } = useParams() // cremation center ID
+    const router = useRouter()
 
     const [formData, setFormData] = useState({
-        fullName: 'John Deo',
-        mobileNumber: '1234567890',
-        address: '100, abcd strret, abc city',
+        fullName: '',
+        mobileNumber: '',
+        address: '',
         petSpecies: 'Dog',
-        petName: 'Kuru',
-        breed: 'Lebra',
-        age: '8',
-        sex: 'Male'
+        petName: '',
+        breed: '',
+        age: '',
+        sex: ''
     })
+    const [submitting, setSubmitting] = useState(false)
+    const [error, setError] = useState('')
+    const [submitted, setSubmitted] = useState(false)
 
     const speciesOptions = ["Dog", "Cat", "Others"]
 
@@ -28,24 +33,39 @@ const RequestForCremation = () => {
     const handleChange = (e) => {
         const { name, value } = e.target
         setFormData(prev => ({ ...prev, [name]: value }))
+        setError('')
     }
 
     const handleSubmit = async (e) => {
         e.preventDefault()
+        if (isFormIncomplete || !id) return
 
-        const payload = {
-            cremationCenterId: id, // 🔥 core requirement
-            ...formData
+        setSubmitting(true)
+        setError('')
+
+        try {
+            const payload = {
+                cremationCenterId: id,
+                fullName: formData.fullName.trim(),
+                mobileNumber: formData.mobileNumber.trim(),
+                address: formData.address.trim(),
+                petSpecies: formData.petSpecies,
+                petName: formData.petName.trim(),
+                breed: formData.breed.trim() || undefined,
+                age: formData.age.trim() || undefined,
+                sex: formData.sex.trim() || undefined,
+            }
+
+            await submitCremationRequest(payload)
+            setSubmitted(true)
+            setTimeout(() => {
+                router.push('/cremation')
+            }, 3000)
+        } catch (err) {
+            setError(err.message || 'Failed to submit request. Please try again.')
+        } finally {
+            setSubmitting(false)
         }
-
-        console.log("Submitting cremation request:", payload)
-
-        // later:
-        // await fetch('/api/cremation-request', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify(payload)
-        // })
     }
 
     return (
@@ -56,7 +76,19 @@ const RequestForCremation = () => {
                         Request for Cremation
                     </h1>
 
-                    <div className="space-y-10">
+                    {submitted ? (
+                        <div className="text-center py-12">
+                            <div className="inline-block p-4 bg-green-100 rounded-full mb-4">
+                                <svg className="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Request Submitted Successfully!</h3>
+                            <p className="text-gray-600 mb-4">We'll contact you shortly.</p>
+                            <p className="text-sm text-gray-500">Redirecting to cremation page...</p>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="space-y-10">
                         {/* Owner Information */}
                         <div>
                             <h3 className="text-xl font-bold text-gray-800 mb-6 ml-1">Owner Information</h3>
@@ -169,20 +201,27 @@ const RequestForCremation = () => {
                             </div>
                         </div>
 
-                        {/* Submit */}
-                        <div className="flex justify-center pt-6">
-                            <button
-                                onClick={handleSubmit}
-                                disabled={isFormIncomplete}
-                                className={`px-12 py-4 rounded-full font-bold text-white transition-all flex items-center gap-2
-                                    ${isFormIncomplete
-                                        ? 'bg-gray-300 cursor-not-allowed'
-                                        : 'bg-[#1e293b] hover:bg-[#0f172a] shadow-lg active:scale-95'}`}
-                            >
-                                Submit Request for Cremation ➔
-                            </button>
-                        </div>
-                    </div>
+                            {error && (
+                                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                                    <p className="text-sm text-red-600">{error}</p>
+                                </div>
+                            )}
+
+                            {/* Submit */}
+                            <div className="flex justify-center pt-6">
+                                <button
+                                    type="submit"
+                                    disabled={isFormIncomplete || submitting}
+                                    className={`px-12 py-4 rounded-full font-bold text-white transition-all flex items-center gap-2
+                                        ${isFormIncomplete || submitting
+                                            ? 'bg-gray-300 cursor-not-allowed'
+                                            : 'bg-[#1e293b] hover:bg-[#0f172a] shadow-lg active:scale-95'}`}
+                                >
+                                    {submitting ? 'Submitting...' : 'Submit Request for Cremation ➔'}
+                                </button>
+                            </div>
+                        </form>
+                    )}
                 </div>
             </Container>
         </section>

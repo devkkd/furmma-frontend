@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Container from '@/components/Container';
 import { HiOutlineLogout, HiOutlineTrash, HiOutlineUserCircle } from 'react-icons/hi';
 import { useAuthStore } from '@/store/authStore';
-import { getToken, setToken, fetchMe, updateProfile } from '@/lib/api';
+import { getToken, setToken, fetchMe, updateProfile, deleteAccount } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 
 /* --- Modal Components --- */
@@ -141,9 +141,17 @@ const AccountSettings = () => {
         }
     };
 
-    const handleDelete = () => {
-        console.log("Account deleted");
-        setShowDeleteModal(false);
+    const handleDelete = async () => {
+        try {
+            await deleteAccount();
+            setToken(null);
+            logout();
+            setShowDeleteModal(false);
+            router.replace('/login');
+        } catch (e) {
+            alert(e.message || 'Failed to delete account. Please try again.');
+            setShowDeleteModal(false);
+        }
     };
 
     return (

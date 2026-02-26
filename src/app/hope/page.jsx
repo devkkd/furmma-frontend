@@ -30,6 +30,7 @@ function HopePageContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [manualLocation, setManualLocation] = useState("");
   const { location, loading: locLoading, error: locError, fetchCurrentLocation, setLocation } = useGeolocation("");
@@ -53,6 +54,7 @@ function HopePageContent() {
 
   const params = useMemo(() => {
     const p = {};
+    // When "All" is selected, don't filter by postType or petType - show all posts
     if (activeCategory === "Dog") {
       p.petType = "dog";
       p.postType = "adoption";
@@ -64,26 +66,47 @@ function HopePageContent() {
     } else if (activeCategory === "Adoption") {
       p.postType = "adoption";
     }
-    if (location) p.location = location.split(",")[0]?.trim();
-    if (searchQuery.trim()) p.search = searchQuery.trim();
+    // Only add location filter if location is set
+    if (location && location.trim()) {
+      const locationValue = location.split(",")[0]?.trim();
+      if (locationValue) p.location = locationValue;
+    }
+    // Only add search filter if search query is not empty
+    if (searchQuery && searchQuery.trim()) {
+      p.search = searchQuery.trim();
+    }
     return p;
   }, [activeCategory, location, searchQuery]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(null);
+    
+    // Always fetch posts, even with empty params (to get all posts)
     fetchHopePosts(params)
       .then((data) => {
-        if (!cancelled) setPosts(data || []);
+        if (!cancelled) {
+          const postsArray = Array.isArray(data) ? data : [];
+          setPosts(postsArray);
+          if (postsArray.length === 0 && !params.postType && !params.petType && !params.location && !params.search) {
+            console.info('No posts found. This might be normal if the database is empty.');
+          }
+        }
       })
-      .catch(() => {
-        if (!cancelled) setPosts([]);
+      .catch((err) => {
+        console.error('Error fetching Hope posts:', err);
+        if (!cancelled) {
+          setPosts([]);
+          setError('Failed to load posts. Please try again later.');
+          console.warn('Failed to fetch Hope posts. Check API endpoint and network connection.');
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [activeCategory, location, searchQuery]);
+  }, [params]);
 
   const categories = ["All", "Dog", "Cat", "Lost & Found", "Adoption"];
 
@@ -228,9 +251,33 @@ function HopePageContent() {
           </div>
 
           {loading ? (
-            <p className="text-gray-500 py-12">Loading posts...</p>
+            <p className="text-gray-500 py-12 text-center">Loading posts...</p>
+          ) : error ? (
+            <div className="py-12 text-center">
+              <p className="text-red-600 mb-2">{error}</p>
+              <button
+                onClick={() => {
+                  setError(null);
+                  setLoading(true);
+                  fetchHopePosts(params)
+                    .then((data) => setPosts(Array.isArray(data) ? data : []))
+                    .catch(() => setError('Failed to load posts. Please try again later.'))
+                    .finally(() => setLoading(false));
+                }}
+                className="text-[#1F2E46] font-semibold hover:underline"
+              >
+                Retry
+              </button>
+            </div>
           ) : posts.length === 0 ? (
-            <p className="text-gray-500 py-12">No Hope posts found. Try adjusting filters or check back later.</p>
+            <div className="py-12 text-center">
+              <p className="text-gray-500 mb-2">No Hope posts found.</p>
+              <p className="text-sm text-gray-400">
+                {activeCategory !== "All" || location || searchQuery
+                  ? "Try adjusting filters or check back later."
+                  : "Be the first to add a Hope post via the Furrmaa mobile app."}
+              </p>
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {posts.map((post) => (

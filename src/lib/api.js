@@ -273,6 +273,28 @@ export async function upgradeSubscription(plan) {
   return res.json();
 }
 
+/** Purchase training subscription. Requires auth. */
+export async function purchaseTrainingSubscription(paymentData = {}) {
+  const base = getBaseUrl();
+  // Use upgrade endpoint with 'premium' plan for training access, or create a specific training plan
+  const res = await fetch(`${base}/subscription/upgrade`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({
+      plan: 'premium', // Premium plan includes training access
+      paymentMethod: paymentData.paymentMethod || 'upi',
+      amount: 999,
+      ...paymentData,
+    }),
+  });
+  if (res.status === 401) throw new Error('Please login to purchase subscription');
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'Purchase failed');
+  }
+  return res.json();
+}
+
 /** Fetch pet events (public). city optional. */
 export async function fetchPetEvents(params = {}) {
   const base = getBaseUrl();
@@ -316,4 +338,233 @@ export async function fetchHopePostById(id) {
   if (!res.ok) throw new Error('Hope post not found');
   const data = await res.json();
   return data.post;
+}
+
+/** Fetch main categories for home page sections (Everyday Essentials, All Round Wellness) */
+export async function fetchMainCategories(params = {}) {
+  const base = getBaseUrl();
+  const q = new URLSearchParams();
+  if (params.section) q.set('section', params.section); // 'everyday' or 'wellness'
+  if (params.petType) q.set('petType', params.petType);
+  const url = `${base}/categories/main${q.toString() ? `?${q}` : ''}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.categories || [];
+  } catch {
+    return [];
+  }
+}
+
+/** Fetch all categories for filter sidebar (admin-managed) */
+export async function fetchAllCategories() {
+  const base = getBaseUrl();
+  try {
+    const res = await fetch(`${base}/categories`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.categories || [];
+  } catch {
+    return [];
+  }
+}
+
+/** Fetch user orders (protected) */
+export async function fetchOrders() {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/orders/my-orders`, { headers: authHeaders() });
+  if (res.status === 401) return [];
+  if (!res.ok) throw new Error('Failed to fetch orders');
+  const data = await res.json();
+  return data.orders || [];
+}
+
+/** Fetch single order by ID (protected) */
+export async function fetchOrderById(orderId) {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/orders/${orderId}`, { headers: authHeaders() });
+  if (res.status === 401) return null;
+  if (!res.ok) throw new Error('Order not found');
+  const data = await res.json();
+  return data.order;
+}
+
+/** Fetch user addresses (protected) */
+export async function fetchAddresses() {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/addresses`, { headers: authHeaders() });
+  if (res.status === 401) return [];
+  if (!res.ok) throw new Error('Failed to fetch addresses');
+  const data = await res.json();
+  return data.addresses || [];
+}
+
+/** Create new address (protected) */
+export async function createAddress(addressData) {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/addresses`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(addressData),
+  });
+  if (res.status === 401) return null;
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'Failed to create address');
+  }
+  const data = await res.json();
+  return data.address;
+}
+
+/** Update address (protected) */
+export async function updateAddress(addressId, addressData) {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/addresses/${addressId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(addressData),
+  });
+  if (res.status === 401) return null;
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'Failed to update address');
+  }
+  const data = await res.json();
+  return data.address;
+}
+
+/** Delete address (protected) */
+export async function deleteAddress(addressId) {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/addresses/${addressId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  if (res.status === 401) return false;
+  if (!res.ok) throw new Error('Failed to delete address');
+  return true;
+}
+
+/** Fetch user notifications (protected) */
+export async function fetchNotifications() {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/notifications`, { headers: authHeaders() });
+  if (res.status === 401) return [];
+  if (!res.ok) throw new Error('Failed to fetch notifications');
+  const data = await res.json();
+  return data.notifications || [];
+}
+
+/** Mark notification as read (protected) */
+export async function markNotificationRead(notificationId) {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/notifications/${notificationId}/read`, {
+    method: 'PUT',
+    headers: authHeaders(),
+  });
+  if (res.status === 401) return false;
+  if (!res.ok) throw new Error('Failed to mark notification as read');
+  return true;
+}
+
+/** Submit feedback (public or protected) */
+export async function submitFeedback(feedbackData) {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(feedbackData),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'Failed to submit feedback');
+  }
+  return res.json();
+}
+
+/** Submit contact form (public) - uses feedback endpoint */
+export async function submitContact(contactData) {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type: 'contact',
+      name: contactData.fullName,
+      email: contactData.email,
+      phone: contactData.mobileNumber,
+      userType: contactData.userType,
+      message: contactData.message,
+      subject: `Contact from ${contactData.userType}`,
+    }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'Failed to submit contact form');
+  }
+  return res.json();
+}
+
+/** Submit support/chat request (protected) */
+export async function submitSupportRequest(supportData) {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/support`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(supportData),
+  });
+  if (res.status === 401) throw new Error('Please login to submit support request');
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'Failed to submit support request');
+  }
+  return res.json();
+}
+
+/** Submit cremation request (protected) */
+export async function submitCremationRequest(cremationData) {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/cremation/requests`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(cremationData),
+  });
+  if (res.status === 401) throw new Error('Please login to submit cremation request');
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'Failed to submit cremation request');
+  }
+  return res.json();
+}
+
+/** Submit return order request (protected) */
+export async function submitReturnRequest(orderId, returnData) {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/orders/${orderId}/return`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(returnData),
+  });
+  if (res.status === 401) throw new Error('Please login to submit return request');
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'Failed to submit return request');
+  }
+  return res.json();
+}
+
+/** Delete user account (protected) */
+export async function deleteAccount() {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/users/account`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  if (res.status === 401) throw new Error('Please login to delete account');
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'Failed to delete account. Please contact support.');
+  }
+  return res.json();
 }

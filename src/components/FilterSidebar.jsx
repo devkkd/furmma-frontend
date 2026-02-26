@@ -1,20 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { fetchAllCategories } from "@/lib/api";
 
 /* =========================
-   FILTER CONFIG
+   FILTER CONFIG (Static filters)
 ========================= */
-const FILTER_GROUPS = [
+const STATIC_FILTER_GROUPS = [
   {
     id: "petType",
     title: "Pet Type",
     options: ["Dog", "Cat"],
-  },
-  {
-    id: "category",
-    title: "Category",
-    options: ["Food", "Medicine", "Toys", "Accessories", "Grooming", "Supplements"],
   },
   {
     id: "age",
@@ -73,6 +69,43 @@ const INITIAL_STATE = {
 
 export default function FilterSidebar({ filters, onChange }) {
   const [selectedFilters, setSelectedFilters] = useState(INITIAL_STATE);
+  const [categories, setCategories] = useState([]);
+
+  // Fetch categories from API
+  useEffect(() => {
+    let cancelled = false;
+    fetchAllCategories()
+      .then((data) => {
+        if (!cancelled) {
+          // Extract category names from API response (use name or title, fallback to slug)
+          const categoryNames = data
+            .map((cat) => {
+              // Prefer name or title for display, but store slug for filtering
+              return cat.name || cat.title || cat.slug;
+            })
+            .filter(Boolean);
+          setCategories(categoryNames);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          // Fallback to default categories
+          setCategories(["Food", "Medicine", "Toys", "Accessories", "Grooming", "Supplements"]);
+        }
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Build filter groups with dynamic categories
+  const FILTER_GROUPS = [
+    ...STATIC_FILTER_GROUPS.slice(0, 1), // petType
+    {
+      id: "category",
+      title: "Category",
+      options: categories.length > 0 ? categories : ["Food", "Medicine", "Toys", "Accessories", "Grooming", "Supplements"],
+    },
+    ...STATIC_FILTER_GROUPS.slice(1), // rest of static filters
+  ];
 
   /* =========================
      URL → SIDEBAR SYNC

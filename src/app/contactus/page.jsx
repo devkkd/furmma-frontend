@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import Container from '@/components/Container';
 import { HiOutlinePhone, HiOutlineMail } from 'react-icons/hi';
 import WhyChooseFurrmaa from '@/components/WhyChooseFurrmaa';
+import { submitContact } from '@/lib/api';
 
 const ContactUs = () => {
     // State for form data
@@ -13,6 +14,9 @@ const ContactUs = () => {
         userType: 'Pet Parent',
         message: ''
     });
+    const [submitting, setSubmitting] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+    const [error, setError] = useState('');
 
     const userTypes = ["Pet Parent", "Service Provider", "Partner / Business", "NGO / Rescue", "Other"];
 
@@ -24,6 +28,38 @@ const ContactUs = () => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+        setError('');
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (isFormIncomplete) return;
+        
+        setSubmitting(true);
+        setError('');
+        
+        try {
+            await submitContact({
+                fullName: formData.fullName.trim(),
+                mobileNumber: formData.mobileNumber.trim(),
+                email: formData.email.trim() || undefined,
+                userType: formData.userType,
+                message: formData.message.trim(),
+            });
+            setSubmitted(true);
+            setFormData({
+                fullName: '',
+                mobileNumber: '',
+                email: '',
+                userType: 'Pet Parent',
+                message: ''
+            });
+            setTimeout(() => setSubmitted(false), 5000);
+        } catch (err) {
+            setError(err.message || 'Failed to submit. Please try again.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -84,7 +120,18 @@ const ContactUs = () => {
                             <p className="text-gray-500">Fill out the form below and our team will get back to you shortly.</p>
                         </div>
 
-                        <form className="space-y-8">
+                        {submitted ? (
+                            <div className="text-center py-12">
+                                <div className="inline-block p-4 bg-green-100 rounded-full mb-4">
+                                    <svg className="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">Message Sent Successfully!</h3>
+                                <p className="text-gray-600">We'll get back to you shortly.</p>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleSubmit} className="space-y-8">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold text-gray-700 ml-1">Full Name</label>
@@ -149,19 +196,25 @@ const ContactUs = () => {
                                 />
                             </div>
 
+                            {error && (
+                                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                                    <p className="text-sm text-red-600">{error}</p>
+                                </div>
+                            )}
                             <div className="flex justify-center">
                                 <button
-                                    type="button"
-                                    disabled={isFormIncomplete}
+                                    type="submit"
+                                    disabled={isFormIncomplete || submitting}
                                     className={`px-12 py-3.5 rounded-full font-bold text-white transition-all flex items-center gap-2
-                                        ${isFormIncomplete
+                                        ${isFormIncomplete || submitting
                                             ? 'bg-gray-400 cursor-not-allowed opacity-70'
                                             : 'bg-[#1e293b] hover:bg-[#0f172a] shadow-lg active:scale-95'}`}
                                 >
-                                    Send ➔
+                                    {submitting ? 'Sending...' : 'Send ➔'}
                                 </button>
                             </div>
                         </form>
+                        )}
                     </div>
                 </div>
 

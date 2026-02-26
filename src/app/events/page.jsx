@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { HiOutlineLocationMarker, HiChevronDown, HiChevronUp } from 'react-icons/hi';
 import Container from '@/components/Container';
 import WhyChooseFurrmaa from '@/components/WhyChooseFurrmaa';
-import { fetchPetEvents, registerPetEvent } from '@/lib/api';
+import { fetchPetEvents } from '@/lib/api';
 
 const PetEvents = () => {
     const [expandedEventId, setExpandedEventId] = useState(null);
@@ -11,13 +11,6 @@ const PetEvents = () => {
     const [loading, setLoading] = useState(true);
     const [city, setCity] = useState('Jaipur');
     const [showCityPicker, setShowCityPicker] = useState(false);
-    const [registerEvent, setRegisterEvent] = useState(null);
-    const [regName, setRegName] = useState('');
-    const [regEmail, setRegEmail] = useState('');
-    const [regPhone, setRegPhone] = useState('');
-    const [regNotes, setRegNotes] = useState('');
-    const [regSubmitting, setRegSubmitting] = useState(false);
-    const [regError, setRegError] = useState('');
 
     useEffect(() => {
         let cancelled = false;
@@ -38,47 +31,6 @@ const PetEvents = () => {
 
     const toggleEvent = (id) => {
         setExpandedEventId(expandedEventId === id ? null : id);
-    };
-
-    const openRegister = (event) => {
-        setRegisterEvent(event);
-        setRegName('');
-        setRegEmail('');
-        setRegPhone('');
-        setRegNotes('');
-        setRegError('');
-    };
-
-    const closeRegister = () => {
-        if (!regSubmitting) {
-            setRegisterEvent(null);
-            setRegError('');
-        }
-    };
-
-    const submitRegister = async (e) => {
-        e.preventDefault();
-        setRegError('');
-        const name = regName.trim();
-        const email = regEmail.trim();
-        const phone = regPhone.trim();
-        if (!name || !email || !phone) {
-            setRegError('Name, email and phone are required.');
-            return;
-        }
-        setRegSubmitting(true);
-        try {
-            await registerPetEvent(registerEvent._id, { name, email, phone, notes: regNotes.trim() || undefined });
-            setRegisterEvent(null);
-            setRegName('');
-            setRegEmail('');
-            setRegPhone('');
-            setRegNotes('');
-        } catch (err) {
-            setRegError(err.message || 'Registration failed. Try again.');
-        } finally {
-            setRegSubmitting(false);
-        }
     };
 
     const image1 = (event) => event.posterUrl || event.images?.[0];
@@ -213,14 +165,6 @@ const PetEvents = () => {
                                                     </div>
                                                 )}
                                             </div>
-
-                                            <button
-                                                type="button"
-                                                onClick={() => openRegister(event)}
-                                                className="mt-4 w-full md:w-auto bg-[#a3e635] hover:bg-[#86b82a] text-gray-900 font-bold py-3 px-6 rounded-full transition"
-                                            >
-                                                Register for this event
-                                            </button>
                                         </div>
                                     </div>
                                 );
@@ -229,62 +173,6 @@ const PetEvents = () => {
                     )}
                 </div>
             </Container>
-
-            {/* Register modal */}
-            {registerEvent && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={closeRegister}>
-                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-xl font-bold text-gray-900 mb-1">Register for event</h3>
-                        <p className="text-sm text-gray-600 mb-4">{registerEvent.title}</p>
-                        <form onSubmit={submitRegister} className="space-y-3">
-                            <input
-                                type="text"
-                                placeholder="Your name *"
-                                value={regName}
-                                onChange={(e) => setRegName(e.target.value)}
-                                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm"
-                                required
-                                disabled={regSubmitting}
-                            />
-                            <input
-                                type="email"
-                                placeholder="Email *"
-                                value={regEmail}
-                                onChange={(e) => setRegEmail(e.target.value)}
-                                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm"
-                                required
-                                disabled={regSubmitting}
-                            />
-                            <input
-                                type="tel"
-                                placeholder="Phone *"
-                                value={regPhone}
-                                onChange={(e) => setRegPhone(e.target.value)}
-                                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm"
-                                required
-                                disabled={regSubmitting}
-                            />
-                            <textarea
-                                placeholder="Notes (optional)"
-                                value={regNotes}
-                                onChange={(e) => setRegNotes(e.target.value)}
-                                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm min-h-[80px]"
-                                rows={3}
-                                disabled={regSubmitting}
-                            />
-                            {regError && <p className="text-sm text-red-600">{regError}</p>}
-                            <div className="flex gap-3 pt-2">
-                                <button type="button" onClick={closeRegister} className="flex-1 py-3 rounded-xl border border-gray-200 font-medium text-gray-700" disabled={regSubmitting}>
-                                    Cancel
-                                </button>
-                                <button type="submit" className="flex-1 py-3 rounded-xl bg-[#a3e635] font-bold text-gray-900 hover:opacity-90 disabled:opacity-70" disabled={regSubmitting}>
-                                    {regSubmitting ? 'Submitting…' : 'Submit'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
 
             <WhyChooseFurrmaa />
         </section>

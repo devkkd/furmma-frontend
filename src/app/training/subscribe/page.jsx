@@ -1,8 +1,19 @@
-import React from 'react';
+"use client";
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Container from '@/components/Container';
 import { HiCheckCircle } from 'react-icons/hi';
+import { fetchSubscription, purchaseTrainingSubscription } from '@/lib/api';
 
 const SubscriptionPage = () => {
+    const router = useRouter();
+    const [subscription, setSubscription] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [purchasing, setPurchasing] = useState(false);
+    const [error, setError] = useState('');
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState('upi');
+
     // Static feature data from the UI reference
     const features = [
         "Smart Training Modules",
@@ -12,6 +23,51 @@ const SubscriptionPage = () => {
         "Track Learning Progress",
         "Bookmark & Continue Watching"
     ];
+
+    useEffect(() => {
+        let cancelled = false;
+        setLoading(true);
+        fetchSubscription()
+            .then((data) => {
+                if (!cancelled) {
+                    setSubscription(data.subscription);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setSubscription(null);
+            })
+            .finally(() => {
+                if (!cancelled) setLoading(false);
+            });
+        return () => { cancelled = true; };
+    }, []);
+
+    const hasTrainingAccess = subscription?.plan === 'training' || subscription?.plan === 'premium' || subscription?.planType === 'training';
+
+    const handlePurchase = async () => {
+        setShowPaymentModal(true);
+    };
+
+    const handleConfirmPurchase = async () => {
+        setPurchasing(true);
+        setError('');
+        
+        try {
+            await purchaseTrainingSubscription({ paymentMethod });
+            // Refresh subscription status
+            const data = await fetchSubscription();
+            setSubscription(data.subscription);
+            setShowPaymentModal(false);
+            // Redirect to training page after successful purchase
+            setTimeout(() => {
+                router.push('/training');
+            }, 2000);
+        } catch (err) {
+            setError(err.message || 'Purchase failed. Please try again.');
+        } finally {
+            setPurchasing(false);
+        }
+    };
 
     return (
         <section className="bg-white py-8 md:py-8 min-h-screen">
@@ -65,27 +121,133 @@ const SubscriptionPage = () => {
                                     </ul>
                                 </div>
 
-                                {/* Price Box */}
-                                <div className="bg-[#a3e635] rounded-[32px] p-4 md:p-8 text-center space-y-2 mb-8 shadow-inner">
-                                    <h4 className="text-3xl font-extrabold text-black">Only ₹999</h4>
-                                    <p className="text-[13px] font-bold text-black/80">
-                                        (One-Time Access)
-                                    </p>
-                                    <p className="text-[11px] font-bold text-black/60 leading-tight">
-                                        No hidden fees. Lifetime access to all premium
-                                    </p>
-                                </div>
+                                {/* Subscription Status */}
+                                {loading ? (
+                                    <div className="text-center py-8 text-gray-500">Checking subscription...</div>
+                                ) : hasTrainingAccess ? (
+                                    <div className="bg-green-50 border-2 border-green-200 rounded-[32px] p-6 md:p-8 text-center space-y-3 mb-8">
+                                        <div className="inline-block p-3 bg-green-100 rounded-full mb-2">
+                                            <HiCheckCircle className="text-green-600 text-3xl" />
+                                        </div>
+                                        <h4 className="text-xl font-extrabold text-green-800">You Have Access!</h4>
+                                        <p className="text-sm font-bold text-green-700">
+                                            Enjoy unlimited access to all training videos
+                                        </p>
+                                        <button
+                                            onClick={() => router.push('/training')}
+                                            className="mt-4 w-full bg-green-600 text-white py-3 rounded-full font-bold text-sm shadow-lg hover:bg-green-700 transition-all"
+                                        >
+                                            Go to Training ➔
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Price Box */}
+                                        <div className="bg-[#a3e635] rounded-[32px] p-4 md:p-8 text-center space-y-2 mb-8 shadow-inner">
+                                            <h4 className="text-3xl font-extrabold text-black">Only ₹999</h4>
+                                            <p className="text-[13px] font-bold text-black/80">
+                                                (One-Time Access)
+                                            </p>
+                                            <p className="text-[11px] font-bold text-black/60 leading-tight">
+                                                No hidden fees. Lifetime access to all premium
+                                            </p>
+                                        </div>
 
-                                {/* CTA Button */}
-                                <button className="w-full bg-[#1e293b] text-white py-4 rounded-full font-bold text-sm shadow-lg hover:bg-black transition-all active:scale-95">
-                                    Continue to Free Trail ➔
-                                </button>
+                                        {error && (
+                                            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                                                <p className="text-sm text-red-600">{error}</p>
+                                            </div>
+                                        )}
+
+                                        {/* CTA Button */}
+                                        <button
+                                            onClick={handlePurchase}
+                                            disabled={purchasing}
+                                            className="w-full bg-[#1e293b] text-white py-4 rounded-full font-bold text-sm shadow-lg hover:bg-black transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {purchasing ? 'Processing...' : 'Continue to Free Trial ➔'}
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
 
                     </div>
                 </div>
             </Container>
+
+            {/* Payment Method Modal */}
+            {showPaymentModal && (
+                <>
+                    <div 
+                        className="fixed inset-0 bg-black/50 z-50" 
+                        onClick={() => !purchasing && setShowPaymentModal(false)}
+                    />
+                    <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white rounded-2xl shadow-xl p-6">
+                        <h3 className="text-xl font-bold text-gray-900 mb-4">Select Payment Method</h3>
+                        
+                        <div className="space-y-3 mb-6">
+                            <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition">
+                                <input
+                                    type="radio"
+                                    name="paymentMethod"
+                                    value="upi"
+                                    checked={paymentMethod === 'upi'}
+                                    onChange={(e) => setPaymentMethod(e.target.value)}
+                                    className="w-4 h-4 text-[#1F2E46] border-gray-300 focus:ring-[#1F2E46]"
+                                />
+                                <span className="text-sm font-medium text-gray-700">UPI</span>
+                            </label>
+                            <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition">
+                                <input
+                                    type="radio"
+                                    name="paymentMethod"
+                                    value="card"
+                                    checked={paymentMethod === 'card'}
+                                    onChange={(e) => setPaymentMethod(e.target.value)}
+                                    className="w-4 h-4 text-[#1F2E46] border-gray-300 focus:ring-[#1F2E46]"
+                                />
+                                <span className="text-sm font-medium text-gray-700">Credit/Debit Card</span>
+                            </label>
+                            <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition">
+                                <input
+                                    type="radio"
+                                    name="paymentMethod"
+                                    value="wallet"
+                                    checked={paymentMethod === 'wallet'}
+                                    onChange={(e) => setPaymentMethod(e.target.value)}
+                                    className="w-4 h-4 text-[#1F2E46] border-gray-300 focus:ring-[#1F2E46]"
+                                />
+                                <span className="text-sm font-medium text-gray-700">Wallet</span>
+                            </label>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm font-bold text-gray-700">Total Amount</span>
+                                <span className="text-xl font-extrabold text-gray-900">₹999</span>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowPaymentModal(false)}
+                                disabled={purchasing}
+                                className="flex-1 py-3 rounded-xl border border-gray-200 font-medium text-gray-700 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmPurchase}
+                                disabled={purchasing}
+                                className="flex-1 py-3 rounded-xl bg-[#1e293b] font-bold text-white hover:bg-black disabled:opacity-50"
+                            >
+                                {purchasing ? 'Processing...' : 'Pay ₹999'}
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
         </section>
     );
 };

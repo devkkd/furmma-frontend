@@ -1,14 +1,18 @@
 "use client"
 import React, { useState } from 'react';
+import { submitFeedback } from '@/lib/api';
 
 const ShareFeedback = () => {
     // State management for form fields
     const [formData, setFormData] = useState({
-        name: 'John Deo',
-        email: 'johndeo@gmail.com',
+        name: '',
+        email: '',
         feedbackType: 'Bug Report',
         message: ''
     });
+    const [submitting, setSubmitting] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+    const [error, setError] = useState('');
 
     // Types of feedback available
     const feedbackTypes = ["Bug Report", "Feature Request", "App Experience"];
@@ -19,6 +23,36 @@ const ShareFeedback = () => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+        setError('');
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (isFormEmpty) return;
+
+        setSubmitting(true);
+        setError('');
+
+        try {
+            await submitFeedback({
+                name: formData.name.trim(),
+                email: formData.email.trim(),
+                feedbackType: formData.feedbackType,
+                message: formData.message.trim(),
+            });
+            setSubmitted(true);
+            setFormData({
+                name: '',
+                email: '',
+                feedbackType: 'Bug Report',
+                message: ''
+            });
+            setTimeout(() => setSubmitted(false), 5000);
+        } catch (err) {
+            setError(err.message || 'Failed to submit feedback. Please try again.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -33,7 +67,18 @@ const ShareFeedback = () => {
                 </p>
             </header>
 
-            <div className="space-y-8">
+            {submitted ? (
+                <div className="text-center py-12">
+                    <div className="inline-block p-4 bg-green-100 rounded-full mb-4">
+                        <svg className="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Feedback Submitted!</h3>
+                    <p className="text-gray-600">Thank you for helping us improve.</p>
+                </div>
+            ) : (
+                <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Name and Email Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
@@ -92,19 +137,27 @@ const ShareFeedback = () => {
                     />
                 </div>
 
-                {/* Submit Button with conditional logic */}
-                <div className="flex justify-center pt-4">
-                    <button
-                        disabled={isFormEmpty}
-                        className={`px-12 py-4 rounded-full font-bold text-white transition-all flex items-center gap-2
-                            ${isFormEmpty 
-                                ? 'bg-gray-300 cursor-not-allowed opacity-70' 
-                                : 'bg-[#1e293b] hover:bg-[#0f172a] shadow-lg active:scale-95'}`}
-                    >
-                        Submit Feedback ➔
-                    </button>
-                </div>
-            </div>
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                            <p className="text-sm text-red-600">{error}</p>
+                        </div>
+                    )}
+
+                    {/* Submit Button with conditional logic */}
+                    <div className="flex justify-center pt-4">
+                        <button
+                            type="submit"
+                            disabled={isFormEmpty || submitting}
+                            className={`px-12 py-4 rounded-full font-bold text-white transition-all flex items-center gap-2
+                                ${isFormEmpty || submitting
+                                    ? 'bg-gray-300 cursor-not-allowed opacity-70' 
+                                    : 'bg-[#1e293b] hover:bg-[#0f172a] shadow-lg active:scale-95'}`}
+                        >
+                            {submitting ? 'Submitting...' : 'Submit Feedback ➔'}
+                        </button>
+                    </div>
+                </form>
+            )}
         </div>
     );
 };

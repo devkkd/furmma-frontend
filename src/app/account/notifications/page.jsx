@@ -1,45 +1,39 @@
-import React from 'react';
+"use client";
+import React, { useState, useEffect } from 'react';
+import { fetchNotifications, markNotificationRead } from '@/lib/api';
 
 const AccNotification = () => {
-    // Dummy notification data based on your screenshot
-    const notifications = [
-        {
-            id: 1,
-            title: "Pet Event Near You",
-            description: "New pet events are happening nearby. Join the fun.",
-            time: "10 Dec 2025, 11:34 am"
-        },
-        {
-            id: 2,
-            title: "Welcome to Furrmaa",
-            description: "Your trusted companion for all pet care needs.",
-            time: "10 Dec 2025, 11:34 am"
-        },
-        {
-            id: 3,
-            title: "Pet Event Near You",
-            description: "New pet events are happening nearby. Join the fun.",
-            time: "10 Dec 2025, 11:34 am"
-        },
-        {
-            id: 4,
-            title: "Welcome to Furrmaa",
-            description: "Your trusted companion for all pet care needs.",
-            time: "10 Dec 2025, 11:34 am"
-        },
-        {
-            id: 5,
-            title: "Pet Event Near You",
-            description: "New pet events are happening nearby. Join the fun.",
-            time: "10 Dec 2025, 11:34 am"
-        },
-        {
-            id: 6,
-            title: "Welcome to Furrmaa",
-            description: "Your trusted companion for all pet care needs.",
-            time: "10 Dec 2025, 11:34 am"
+    const [notifications, setNotifications] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        let cancelled = false;
+        setLoading(true);
+        fetchNotifications()
+            .then((data) => {
+                if (!cancelled) setNotifications(data);
+            })
+            .catch(() => {
+                if (!cancelled) setNotifications([]);
+            })
+            .finally(() => {
+                if (!cancelled) setLoading(false);
+            });
+        return () => { cancelled = true; };
+    }, []);
+
+    const handleNotificationClick = async (notification) => {
+        if (!notification.read && notification._id) {
+            try {
+                await markNotificationRead(notification._id);
+                setNotifications(notifications.map(n => 
+                    n._id === notification._id ? { ...n, read: true } : n
+                ));
+            } catch (err) {
+                console.error('Failed to mark notification as read:', err);
+            }
         }
-    ];
+    };
 
     return (
         <div className="bg-white border border-gray-100 md:rounded-[32px] p-4 md:p-10 shadow-sm min-h-[600px]">
@@ -49,26 +43,46 @@ const AccNotification = () => {
             </h1>
 
             {/* Notifications List */}
-            <div className="space-y-4">
-                {notifications.map((notification) => (
-                    <div 
-                        key={notification.id}
-                        className="bg-[#fbfcfd] border border-gray-50 rounded-2xl p-5 hover:shadow-sm transition-shadow cursor-pointer group"
-                    >
-                        <div className="space-y-1">
-                            <h3 className="text-[15px] font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-                                {notification.title}
-                            </h3>
-                            <p className="text-[13px] text-gray-600 font-medium">
-                                {notification.description}
-                            </p>
-                            <p className="text-[11px] text-gray-400 font-bold pt-1 uppercase tracking-wider">
-                                {notification.time}
-                            </p>
-                        </div>
-                    </div>
-                ))}
-            </div>
+            {loading ? (
+                <div className="py-12 text-center text-gray-500">Loading notifications...</div>
+            ) : (
+                <div className="space-y-4">
+                    {notifications.map((notification) => {
+                        const notificationId = notification._id || notification.id;
+                        const time = notification.createdAt 
+                            ? new Date(notification.createdAt).toLocaleString('en-IN', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true
+                            })
+                            : notification.time || 'Recently';
+                        
+                        return (
+                            <div 
+                                key={notificationId}
+                                onClick={() => handleNotificationClick(notification)}
+                                className={`bg-[#fbfcfd] border rounded-2xl p-5 hover:shadow-sm transition-shadow cursor-pointer group
+                                    ${notification.read ? 'border-gray-50 opacity-75' : 'border-gray-100'}`}
+                            >
+                                <div className="space-y-1">
+                                    <h3 className="text-[15px] font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                                        {notification.title || notification.message}
+                                    </h3>
+                                    <p className="text-[13px] text-gray-600 font-medium">
+                                        {notification.description || notification.body || notification.message}
+                                    </p>
+                                    <p className="text-[11px] text-gray-400 font-bold pt-1 uppercase tracking-wider">
+                                        {time}
+                                    </p>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* Empty State Logic (Optional) */}
             {notifications.length === 0 && (

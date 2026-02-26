@@ -1,31 +1,44 @@
 "use client"
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Container from '@/components/Container';
 import { HiOutlinePlus } from 'react-icons/hi';
 import { IoMdRadioButtonOn, IoMdRadioButtonOff } from 'react-icons/io';
+import { fetchAddresses, deleteAddress } from '@/lib/api';
 
 const MyAddress = () => {
-    // Dummy state to manage selected address
-    const [selectedId, setSelectedId] = useState(1);
+    const [addresses, setAddresses] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedId, setSelectedId] = useState(null);
 
-    const addresses = [
-        {
-            id: 1,
-            name: "John Deo",
-            phone: "1234567890",
-            addressLine: "123, abcd arera, 123456",
-            cityState: "abcd city, abcd state",
-            isDefault: true
-        },
-        {
-            id: 2,
-            name: "John Deo",
-            phone: "1234567890",
-            addressLine: "123, abcd arera, 123456",
-            cityState: "abcd city, abcd state",
-            isDefault: false
+    useEffect(() => {
+        let cancelled = false;
+        setLoading(true);
+        fetchAddresses()
+            .then((data) => {
+                if (!cancelled) {
+                    setAddresses(data);
+                    const defaultAddr = data.find(a => a.isDefault);
+                    if (defaultAddr) setSelectedId(defaultAddr._id || defaultAddr.id);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setAddresses([]);
+            })
+            .finally(() => {
+                if (!cancelled) setLoading(false);
+            });
+        return () => { cancelled = true; };
+    }, []);
+
+    const handleDelete = async (addressId) => {
+        if (!confirm('Are you sure you want to delete this address?')) return;
+        try {
+            await deleteAddress(addressId);
+            setAddresses(addresses.filter(a => (a._id || a.id) !== addressId));
+        } catch (err) {
+            alert(err.message || 'Failed to delete address');
         }
-    ];
+    };
 
     return (
         <section className="bg-white md:py-10 min-h-screen">
@@ -44,9 +57,17 @@ const MyAddress = () => {
                     </div>
 
                     {/* Address Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {addresses.map((addr) => {
-                            const isSelected = selectedId === addr.id;
+                    {loading ? (
+                        <div className="py-12 text-center text-gray-500">Loading addresses...</div>
+                    ) : addresses.length === 0 ? (
+                        <div className="py-12 text-center text-gray-500">
+                            <p>No addresses found. Add your first address to get started.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {addresses.map((addr) => {
+                                const addrId = addr._id || addr.id;
+                                const isSelected = selectedId === addrId;
                             
                             return (
                                 <div 
@@ -89,14 +110,18 @@ const MyAddress = () => {
                                         <button className="flex-1 py-3 text-xs font-bold text-gray-500 hover:bg-gray-50 uppercase tracking-widest transition border-r border-gray-100">
                                             Edit
                                         </button>
-                                        <button className="flex-1 py-3 text-xs font-bold text-gray-500 hover:bg-gray-50 uppercase tracking-widest transition">
+                                        <button 
+                                            onClick={() => handleDelete(addrId)}
+                                            className="flex-1 py-3 text-xs font-bold text-gray-500 hover:bg-gray-50 uppercase tracking-widest transition"
+                                        >
                                             Remove
                                         </button>
                                     </div>
                                 </div>
                             );
                         })}
-                    </div>
+                        </div>
+                    )}
                 </div>
             </Container>
         </section>

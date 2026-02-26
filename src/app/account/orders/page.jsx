@@ -1,10 +1,40 @@
-import { dummyOrders, statusMap } from '@/data/dummyOrders'
+'use client';
+
+import { statusMap } from '@/data/dummyOrders'
 import Link from 'next/link'
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { HiOutlineSearch, HiOutlineAdjustments } from 'react-icons/hi'
+import { fetchOrders } from '@/lib/api'
+import { dummyOrders } from '@/data/dummyOrders'
 
 const MyOrders = () => {
-  const orders = dummyOrders
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    fetchOrders()
+      .then((data) => {
+        if (!cancelled) {
+          setOrders(data)
+          setError(null)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Error fetching orders:', err)
+          // Fallback to dummy data if API fails
+          setOrders(dummyOrders)
+          setError('Failed to load orders. Showing cached data.')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [])
 
   return (
     <div className="bg-white border border-gray-100 md:rounded-[32px] md:p-8 pb-6 shadow-sm">
@@ -29,8 +59,19 @@ const MyOrders = () => {
       </div>
 
       {/* Orders List */}
-      <div className="space-y-6">
-        {orders.map(order => {
+      {loading ? (
+        <div className="py-12 text-center text-gray-500">Loading orders...</div>
+      ) : error ? (
+        <div className="py-12 text-center">
+          <p className="text-amber-600 mb-2">{error}</p>
+        </div>
+      ) : orders.length === 0 ? (
+        <div className="py-12 text-center text-gray-500">
+          <p>No orders found.</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {orders.map(order => {
           const product = order.items[0].product
 
           return (
@@ -75,7 +116,8 @@ const MyOrders = () => {
             </Link>
           )
         })}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

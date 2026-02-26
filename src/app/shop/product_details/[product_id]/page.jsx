@@ -84,7 +84,10 @@ export default function ProductDetailPage() {
               )}
             </div>
             {product.description && (
-              <p className="text-gray-600 text-sm leading-relaxed mb-6">{product.description}</p>
+              <div 
+                className="text-gray-600 text-sm leading-relaxed mb-6 product-description"
+                dangerouslySetInnerHTML={{ __html: product.description }}
+              />
             )}
             <button
               className="w-full border border-gray-300 rounded-xl py-3 text-sm font-medium hover:bg-black hover:text-white transition"
