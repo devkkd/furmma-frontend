@@ -25,6 +25,7 @@ export default function HopeDetailPage() {
   if (!post) return <Container><p className="py-16 text-gray-500">Post not found.</p><Link href="/hope" className="text-[#1F2E46] font-bold">← Back to Hope</Link></Container>;
 
   const imageUrl = post.images && post.images[0];
+  const hasMultipleImages = post.images && post.images.length > 1;
   const emoji = post.petType === "dog" ? "🐕" : post.petType === "cat" ? "🐱" : "🐾";
 
   return (
@@ -42,6 +43,13 @@ export default function HopeDetailPage() {
                 emoji
               )}
             </div>
+            {hasMultipleImages && (
+              <div className="flex gap-2 p-3 bg-gray-50 overflow-x-auto">
+                {post.images.map((src, idx) => (
+                  <img key={idx} src={src} alt={`${post.petName} ${idx + 1}`} className="w-16 h-16 rounded-lg object-cover shrink-0" />
+                ))}
+              </div>
+            )}
             <div className="p-6 md:p-8">
               <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-[#a3e635] text-black mb-4">
                 {post.postType === "lostFound" ? "Lost & Found" : "Adoption"}

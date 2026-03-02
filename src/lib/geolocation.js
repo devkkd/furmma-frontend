@@ -1,3 +1,9 @@
+// Nominatim requires a valid User-Agent; otherwise requests can be blocked (403)
+const NOMINATIM_HEADERS = {
+  'Accept-Language': 'en',
+  'User-Agent': 'FurrmaaWeb/1.0 (https://furrmaa.com)',
+};
+
 /**
  * Get current position via browser Geolocation API
  */
@@ -10,7 +16,7 @@ export function getCurrentPosition() {
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       (err) => reject(err),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 }
     );
   });
 }
@@ -21,7 +27,7 @@ export function getCurrentPosition() {
 export async function reverseGeocode(lat, lng) {
   const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
   const res = await fetch(url, {
-    headers: { 'Accept-Language': 'en' },
+    headers: NOMINATIM_HEADERS,
   });
   if (!res.ok) throw new Error('Geocoding failed');
   const data = await res.json();
@@ -31,13 +37,18 @@ export async function reverseGeocode(lat, lng) {
     addr.city || addr.town || addr.village || addr.county,
     addr.state,
   ].filter(Boolean);
-  return parts.join(', ') || data.display_name || `${lat}, ${lng}`;
+  return parts.join(', ') || data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 }
 
 /**
- * Get current location as readable address string
+ * Get current location as readable address string.
+ * If reverse geocode fails (e.g. 403/CORS), returns "lat, lng" as fallback.
  */
 export async function getCurrentLocationString() {
   const { lat, lng } = await getCurrentPosition();
-  return reverseGeocode(lat, lng);
+  try {
+    return await reverseGeocode(lat, lng);
+  } catch {
+    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, Suspense } from "react";
+import { useEffect, useCallback, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ToggleDogCat from "@/components/ToggleDogCat";
 import FilterSidebar from "@/components/FilterSidebar";
@@ -11,6 +11,7 @@ import { useProducts } from "@/hooks/useProducts";
 function StorePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const petType = usePetStore((state) => state.petType);
   const setPetType = usePetStore((state) => state.setPet);
   const filters = usePetStore((state) => state.filters);
@@ -21,9 +22,11 @@ function StorePageContent() {
   const petFromUrl = searchParams.get("petType") || null;
   const ratingFromUrl = searchParams.get("rating") || searchParams.get("minRating") || null;
   const ageFromUrl = searchParams.get("age") || null;
+  const sizeFromUrl = searchParams.get("size") || null;
+  const dietaryFromUrl = searchParams.get("dietary") || null;
 
-  // Shop default: Dog selected (active button + dog products) when no petType in URL
-  const effectivePetType = petFromUrl || "dog";
+  // Pet type sirf jab URL/filter me select ho – select na ho to backend par filter nahi (sab dikhenge)
+  const effectivePetType = petFromUrl && String(petFromUrl).trim() ? String(petFromUrl).trim().toLowerCase() : undefined;
 
   // Sync to store so Header/other links carry current pet type
   useEffect(() => {
@@ -31,87 +34,90 @@ function StorePageContent() {
     if (cat) setFilter("category", cat);
     if (ratingFromUrl) setFilter("rating", ratingFromUrl);
     if (ageFromUrl) setFilter("age", ageFromUrl);
-    setPetType(effectivePetType);
-  }, [searchParams, effectivePetType, ratingFromUrl, ageFromUrl, setFilter, setPetType]);
+    if (sizeFromUrl) setFilter("size", sizeFromUrl);
+    if (dietaryFromUrl) setFilter("dietary", dietaryFromUrl);
+    setPetType(effectivePetType ?? "dog");
+  }, [searchParams, effectivePetType, ratingFromUrl, ageFromUrl, sizeFromUrl, dietaryFromUrl, setFilter, setPetType]);
 
-  // Filters object for FilterSidebar (from URL + store)
+  // Shop par sirf URL = source of truth (persisted store se mat lo – warna purani dietary/size etc. chali jati hai)
   const sidebarFilters = {
-    petType: effectivePetType,
-    category: categoryFromUrl || filters?.category || null,
-    age: ageFromUrl || filters?.age || null,
+    petType: effectivePetType ?? "dog",
+    category: categoryFromUrl || null,
+    age: ageFromUrl || null,
     dogBreed: filters?.dogBreed || null,
     catBreed: filters?.catBreed || null,
-    size: filters?.size || null,
-    dietary: filters?.dietary || null,
-    rating: ratingFromUrl || filters?.rating || null,
+    size: sizeFromUrl || null,
+    dietary: dietaryFromUrl || null,
+    rating: ratingFromUrl || null,
   };
 
   // When user changes filter in sidebar: update store + URL (all filters persist)
   const handleFilterChange = useCallback(
     (payload) => {
       // Handle petType - take first value if comma-separated
-      if (payload.petType) {
-        const petTypeValue = payload.petType.split(",")[0].toLowerCase();
-        setPetType(petTypeValue === "dog" ? "dog" : petTypeValue === "cat" ? "cat" : effectivePetType);
+      if (payload.hasOwnProperty("petType")) {
+        const petTypeValue = payload.petType ? String(payload.petType).split(",")[0].toLowerCase() : "dog";
+        setPetType(petTypeValue === "cat" ? "cat" : "dog");
       }
-      
-      // Handle category - take first value if comma-separated, convert to lowercase slug
-      if (payload.category !== undefined) {
-        const categoryValue = payload.category 
-          ? payload.category.split(",")[0].toLowerCase().trim()
+      // Category: clear when empty, else first slug
+      if (payload.hasOwnProperty("category")) {
+        const categoryValue = payload.category && String(payload.category).trim()
+          ? String(payload.category).split(",")[0].toLowerCase().trim()
           : null;
         setFilter("category", categoryValue);
       }
-      
-      if (payload.rating !== undefined) {
-        const ratingValue = payload.rating ? payload.rating.split(",")[0] : null;
+      if (payload.hasOwnProperty("rating")) {
+        const ratingValue = payload.rating && String(payload.rating).trim() ? String(payload.rating).split(",")[0] : null;
         setFilter("rating", ratingValue);
       }
-      
-      if (payload.age !== undefined) {
-        const ageValue = payload.age ? payload.age.split(",")[0].toLowerCase() : null;
+      if (payload.hasOwnProperty("age")) {
+        const ageValue = payload.age && String(payload.age).trim() ? String(payload.age).split(",")[0].toLowerCase() : null;
         setFilter("age", ageValue);
       }
-      
-      if (payload.size !== undefined) setFilter("size", payload.size || null);
-      if (payload.dietary !== undefined) setFilter("dietary", payload.dietary || null);
-      if (payload.dogBreed !== undefined) setFilter("dogBreed", payload.dogBreed || null);
-      if (payload.catBreed !== undefined) setFilter("catBreed", payload.catBreed || null);
+      if (payload.hasOwnProperty("size")) setFilter("size", payload.size && String(payload.size).trim() ? payload.size : null);
+      if (payload.hasOwnProperty("dietary")) setFilter("dietary", payload.dietary && String(payload.dietary).trim() ? payload.dietary : null);
+      if (payload.hasOwnProperty("dogBreed")) setFilter("dogBreed", payload.dogBreed && String(payload.dogBreed).trim() ? payload.dogBreed : null);
+      if (payload.hasOwnProperty("catBreed")) setFilter("catBreed", payload.catBreed && String(payload.catBreed).trim() ? payload.catBreed : null);
 
       const params = new URLSearchParams();
-      const pet = (payload.hasOwnProperty("petType") 
-        ? payload.petType.split(",")[0].toLowerCase() 
-        : effectivePetType) || null;
-      const cat = (payload.hasOwnProperty("category") && payload.category
-        ? payload.category.split(",")[0].toLowerCase().trim()
-        : categoryFromUrl) || null;
-      const rating = (payload.hasOwnProperty("rating") && payload.rating
-        ? payload.rating.split(",")[0]
-        : ratingFromUrl) || null;
-      const age = (payload.hasOwnProperty("age") && payload.age
-        ? payload.age.split(",")[0].toLowerCase()
-        : ageFromUrl) || null;
-      
+      // Sirf selected filters URL me – koi section select na ho to param mat bhejo
+      const pet = payload.hasOwnProperty("petType")
+        ? (payload.petType && String(payload.petType).trim() ? String(payload.petType).split(",")[0].toLowerCase() : null)
+        : effectivePetType;
+      const cat = payload.hasOwnProperty("category") ? (payload.category && String(payload.category).trim() ? String(payload.category).split(",")[0].toLowerCase().trim() : null) : categoryFromUrl;
+      const rating = payload.hasOwnProperty("rating") ? (payload.rating && String(payload.rating).trim() ? String(payload.rating).split(",")[0] : null) : ratingFromUrl;
+      const age = payload.hasOwnProperty("age") ? (payload.age && String(payload.age).trim() ? String(payload.age).split(",")[0].toLowerCase() : null) : ageFromUrl;
+      const size = payload.hasOwnProperty("size") ? (payload.size && String(payload.size).trim() ? String(payload.size).trim() : null) : sizeFromUrl;
+      const dietaryVal = payload.hasOwnProperty("dietary") ? (payload.dietary && String(payload.dietary).trim() ? String(payload.dietary).trim() : null) : dietaryFromUrl;
+
       if (pet) params.set("petType", pet);
       if (cat) params.set("category", cat);
       if (rating) params.set("rating", rating);
       if (age) params.set("age", age);
-      
+      if (size) params.set("size", size);
+      if (dietaryVal) params.set("dietary", dietaryVal);
+
+      setMobileFilterOpen(false);
       router.push(`/shop${params.toString() ? `?${params.toString()}` : ""}`);
     },
-    [setPetType, setFilter, effectivePetType, categoryFromUrl, ratingFromUrl, ageFromUrl, router]
+    [setPetType, setFilter, effectivePetType, categoryFromUrl, ratingFromUrl, ageFromUrl, sizeFromUrl, dietaryFromUrl, router]
   );
 
-  const effectiveRating = ratingFromUrl || filters?.rating || undefined;
-  const effectiveCategory = categoryFromUrl || filters?.category || undefined;
-  const effectiveAge = ageFromUrl || filters?.age || undefined;
+  // API ko sirf URL wale filters bhejo – store/persist mat use karo (purani dietary/size nahi jayegi)
+  const effectiveRating = ratingFromUrl?.trim?.() || undefined;
+  const effectiveCategory = categoryFromUrl?.trim?.() || undefined;
+  const effectiveAge = ageFromUrl?.trim?.() || undefined;
+  const effectiveSize = sizeFromUrl?.trim?.() || undefined;
+  const effectiveDietary = dietaryFromUrl?.trim?.() || undefined;
   const minRatingNum = effectiveRating ? parseInt(String(effectiveRating).split(",")[0], 10) : undefined;
 
   const { products: apiProducts, loading } = useProducts({
     petType: effectivePetType,
-    category: effectiveCategory,
-    age: effectiveAge,
-    minRating: minRatingNum || undefined,
+    category: effectiveCategory || undefined,
+    age: effectiveAge || undefined,
+    size: effectiveSize || undefined,
+    dietary: effectiveDietary || undefined,
+    minRating: minRatingNum ?? undefined,
   });
 
   // Normalize category for comparison (case-insensitive, handle slugs)
@@ -137,12 +143,20 @@ function StorePageContent() {
   return (
     <div className="bg-white w-full">
       <div className="max-w-7xl mx-auto px-4 py-8 font-sans">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-8 flex-wrap gap-2">
           <h1 className="text-4xl font-bold text-gray-900">Shop</h1>
+          <button
+            type="button"
+            onClick={() => setMobileFilterOpen(true)}
+            className="md:hidden flex items-center gap-2 px-4 py-2 border border-[#D9DCE2] rounded-xl text-gray-700 font-medium"
+          >
+            <span>Filters</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+          </button>
         </div>
         <ToggleDogCat
           onShopPage
-          currentPetType={effectivePetType}
+          currentPetType={effectivePetType ?? "dog"}
           onPetTypeChange={(type) => {
             const params = new URLSearchParams(searchParams.toString());
             params.set("petType", type);
@@ -154,6 +168,21 @@ function StorePageContent() {
           <div className="hidden md:block w-64 shrink-0">
             <FilterSidebar filters={sidebarFilters} onChange={handleFilterChange} />
           </div>
+          {/* Mobile filter drawer */}
+          {mobileFilterOpen && (
+            <div className="fixed inset-0 z-50 md:hidden">
+              <div className="absolute inset-0 bg-black/50" onClick={() => setMobileFilterOpen(false)} aria-hidden />
+              <div className="absolute right-0 top-0 bottom-0 w-full max-w-[320px] bg-white shadow-xl overflow-y-auto">
+                <div className="sticky top-0 bg-white border-b border-[#D9DCE2] px-4 py-3 flex justify-between items-center">
+                  <h2 className="font-semibold text-lg">Filters</h2>
+                  <button type="button" onClick={() => setMobileFilterOpen(false)} className="p-2 text-gray-500 hover:text-black">✕</button>
+                </div>
+                <div className="p-4">
+                  <FilterSidebar filters={sidebarFilters} onChange={handleFilterChange} />
+                </div>
+              </div>
+            </div>
+          )}
           <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-10">
             {loading ? (
               <p className="text-gray-500 col-span-full">Loading...</p>

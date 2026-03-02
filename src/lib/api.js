@@ -86,6 +86,8 @@ export async function fetchProducts(params = {}) {
   if (params.category) q.set('category', params.category);
   if (params.petType) q.set('petType', params.petType);
   if (params.age) q.set('age', params.age);
+  if (params.size) q.set('size', params.size);
+  if (params.dietary) q.set('dietary', params.dietary);
   if (params.search) q.set('search', params.search);
   if (params.sortBy) q.set('sortBy', params.sortBy);
   if (params.minRating != null) q.set('minRating', params.minRating);
@@ -365,6 +367,32 @@ export async function fetchAllCategories() {
     if (!res.ok) return [];
     const data = await res.json();
     return data.categories || [];
+  } catch {
+    return [];
+  }
+}
+
+/** Fetch product sizes for filter (admin-managed) */
+export async function fetchSizes() {
+  const base = getBaseUrl();
+  try {
+    const res = await fetch(`${base}/sizes`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.sizes || [];
+  } catch {
+    return [];
+  }
+}
+
+/** Fetch product dietary options for filter (admin-managed) */
+export async function fetchDietary() {
+  const base = getBaseUrl();
+  try {
+    const res = await fetch(`${base}/dietary`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.dietary || [];
   } catch {
     return [];
   }

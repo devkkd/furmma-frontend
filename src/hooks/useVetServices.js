@@ -30,7 +30,7 @@ function toServiceItem(item, typeName, index) {
     name: item.name || item.clinicName || 'Service',
     distance: `${(index + 1) * 0.5} km away`,
     address: fullAddress || 'Address not available',
-    image: item.profileImage || '/images/Vet/dogshop.png',
+    image: item.profileImage || undefined,
     category: item.specialization || item.services?.[0] || typeName,
     phone: item.phone,
     type: typeName,
